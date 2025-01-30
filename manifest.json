@@ -3,7 +3,7 @@
   "name": "FinaHack",
   "version": "1.0",
   "description": "Une extension pour intéragir avec Finary",
-  "permissions": ["contextMenus", "scripting", "activeTab", "cookies", "storage","tabs"],
+  "permissions": ["contextMenus", "scripting", "activeTab", "cookies", "storage", "tabs"],
   "background": {
     "service_worker": "background.js"
   },
@@ -18,7 +18,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["injected.js"],
+      "resources": ["injected.js", "consolidateAssets.js", "myPyramid.js"],
       "matches": ["<all_urls>"]
     }
   ]
