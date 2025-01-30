@@ -20,6 +20,12 @@ chrome.runtime.onInstalled.addListener(() => {
         title: "Voir ma pyramide",
         contexts: ["all"]
     });
+	chrome.contextMenus.create({
+    id: "addRealEstate",
+    title: "Ajouter un bien immobilier",
+    contexts: ["all"]
+});
+
 });
 
 // Gérer les actions du menu contextuel
@@ -86,5 +92,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
                 }
             });
         });
+    } else if (info.menuItemId === "addRealEstate") {
+        chrome.tabs.sendMessage(tab.id, { action: "openRealEstateForm" });
     }
 });

@@ -7,6 +7,12 @@
   "background": {
     "service_worker": "background.js"
   },
+  "icons": {
+   "16": "extension_icon16.png",
+   "32": "extension_icon32.png",
+   "48": "extension_icon48.png",
+   "128": "extension_icon128.png"
+  },
   "host_permissions": [
     "*://*.finary.com/*"
   ],
@@ -18,7 +24,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["injected.js", "consolidateAssets.js", "myPyramid.js"],
+      "resources": ["injected.js", "consolidateAssets.js", "myPyramid.js", "add_real_estate.js"],
       "matches": ["<all_urls>"]
     }
   ]

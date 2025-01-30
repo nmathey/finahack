@@ -84,6 +84,8 @@ function fetchData(apiUrl, session_token, route) {
         .catch(error => console.error("❌ Erreur de chargement des assets :", error));
 }
 
+let sessionToken = null; // Déclaration de la variable globale
+
 // Listen for the message from the injected script
 window.addEventListener('message', function(event) {
 // We only accept messages from our own page
@@ -91,7 +93,8 @@ if (event.source !== window) return;
 
 if (event.data.type && event.data.type === 'FROM_PAGE') {
   // Now we have the session token
-  const sessionToken = event.data.token;
+  sessionToken = event.data.token; // Stocker le token globalement
+  console.log("✅ Token reçu:", sessionToken);
 
   // Call your API using the session token
   const apiUrl_me = 'https://api.finary.com/users/me';
@@ -101,3 +104,40 @@ if (event.data.type && event.data.type === 'FROM_PAGE') {
   extractAssets();
 }
 });
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "openRealEstateForm") {
+        if (!sessionToken) {
+            console.error("❌ Erreur: sessionToken est indéfini !");
+            return;
+        }
+
+        const userData = {
+            sessionToken: sessionToken,
+            category: "rent",
+            address: "123 rue Exemple, Paris",
+            user_estimated_value: 300000,
+            description: "Appartement en location",
+            surface: 50,
+            buying_price: 250000,
+            building_type: "apartment",
+            ownership_percentage: 100,
+            monthly_charges: 150,
+            monthly_rent: 1200,
+            yearly_taxes: 1000,
+            rental_period: "annual",
+            rental_type: "nue",
+            place_id: "ChIJF2Cu_iDm9EcREgxjJap4mCM"
+        };
+
+        import(chrome.runtime.getURL('add_real_estate.js'))
+            .then(module => {
+                console.log("✅ Module chargé :", module);
+                return module.addUserRealEstate(userData);
+            })
+            .then(response => console.log("✅ Réponse API :", response))
+            .catch(error => console.error("❌ Erreur API :", error));
+    }
+});
+
+
