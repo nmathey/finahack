@@ -12,7 +12,8 @@ Ainsi  plutôt que de demander à l'équipe Finary d'implémenter certaines fonc
 ## ⚠️ Avertissement
 
 Je ne suis pas développeur professionnel. J'ai juste quelques bases de mes études et j'apprends sur le temps selon mes besoins. 
-Ceci explique la qualité du code qui peut piquer les yeux de certains: si vous voulez aider n'hésitez pas à participer (remise en qualité du code, nouvelles fonctionnalité etc.)
+Ceci explique la qualité du code qui peut piquer les yeux de certains et le style "bac à sable" de ce repo pour le moment.
+Si vous voulez aider n'hésitez pas à participer (remise en qualité du code, nouvelles fonctionnalité etc.)
 
 ## Installation 
 
