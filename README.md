@@ -6,7 +6,7 @@ FinaHack est une extension pour l'application de gestion de patrimoine Finary. E
 ## Motivation
 Finary est l'application de gestion de patrimoine par excellence offrant une version mobile et web. Malgré des efforts afin d'être à l'écoute de sa communauté (https://community.finary.com) et la disponibilité historique de leur API (grâce au travail de https://github.com/lasconic/finary_uapi), cette API n'est plus accessible suite à un changement de gestion d'accès/authentification.
 
-Ainsi, plutôt que de demander à l'équipe Finary d'implémenter certaines fonctionnalités, nous les développons nous-mêmes à travers cette extension !
+Ainsi, plutôt que de demander à l'équipe Finary d'implémenter certaines fonctionnalités, développons les nous-mêmes à travers cette extension à sur le même modèle que https://github.com/toolkit-for-ynab/toolkit-for-ynab ;)
 
 ## ⚠️ Avertissement
 Je ne suis pas développeur professionnel. J'ai juste quelques bases de mes études et j'apprends sur le temps selon mes besoins. Ceci explique la qualité du code qui peut piquer les yeux de certains et le style "bac à sable" de ce repo pour le moment. Si vous voulez aider, n'hésitez pas à participer (remise en qualité du code, nouvelles fonctionnalités, etc.).
