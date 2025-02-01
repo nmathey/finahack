@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/88ebf104-b143-424a-928b-9b213d82cc1b"/>
+</p>
+
 # FinaHack
 
 ## Introduction
