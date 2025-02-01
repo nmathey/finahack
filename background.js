@@ -16,11 +16,6 @@ chrome.runtime.onInstalled.addListener(() => {
         contexts: ["all"]
     });
 	chrome.contextMenus.create({
-        id: "myPyramid",
-        title: "Voir ma pyramide",
-        contexts: ["all"]
-    });
-	chrome.contextMenus.create({
     id: "addRealEstate",
     title: "Ajouter un bien immobilier",
     contexts: ["all"]
