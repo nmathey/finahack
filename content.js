@@ -140,7 +140,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 });
 
-/* chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "openRealEstateForm") {
         if (!sessionToken) {
             console.error("❌ Erreur: sessionToken est indéfini !");
@@ -152,7 +152,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             category: "rent",
             address: "123 rue Exemple, Paris",
             user_estimated_value: 300000,
-            description: "Appartement en location",
+            description: "Test - Appartement en location",
             surface: 50,
             buying_price: 250000,
             building_type: "apartment",
@@ -162,7 +162,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             yearly_taxes: 1000,
             rental_period: "annual",
             rental_type: "nue",
-            place_id: "ChIJF2Cu_iDm9EcREgxjJap4mCM"
+            place_id: "EjY5ODAgTiBGZWRlcmFsIEh3eSBzdWl0ZSAxMTAsIEJvY2EgUmF0b24sIEZMIDMzNDMyLCBVU0EiJRojChYKFAoSCZdwCUH24diIER1Jcn6F7iQtEglzdWl0ZSAxMTA"
         };
 
         import(chrome.runtime.getURL('add_real_estate.js'))
@@ -174,6 +174,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             .catch(error => console.error("❌ Erreur API :", error));
     }
 });
-*/
+
 
 
