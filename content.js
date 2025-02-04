@@ -107,26 +107,36 @@ window.addEventListener('message', function(event) {
     }
 });
 
-console.log("Content script chargé !");
+let messageListener = null;
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log("Message reçu dans content.js:", message);
-
     if (message.action === "REQUEST_TOKEN") {
-        console.log("Message reçu de api.js pour demander un nouveau token");
+        console.log("🔄 Demande de nouveau token reçue");
+        
+        // Supprimer l'ancien listener s'il existe
+        if (messageListener) {
+            window.removeEventListener("message", messageListener);
+        }
 
-        window.addEventListener("message", function(event) {
+        // Créer le nouveau listener
+        messageListener = function(event) {
             if (event.source !== window) return;
             if (event.data.type && event.data.type === "FROM_PAGE") {
-                console.log("Token reçu de la page:", event.data.token);
+                console.log("Token reçu de injected.js:", event.data.token);
                 sendResponse({ token: event.data.token });
+                // Nettoyage après réponse
+                window.removeEventListener("message", messageListener);
+                messageListener = null;
             }
-        }, { once: true });
+        };
 
-        // Trigger the function in `injected.js` to get a new token
-        console.log("Envoi du message à injected.js pour demander un nouveau token");
+        // Ajouter le nouveau listener
+        window.addEventListener("message", messageListener);
+
+        // Demander un nouveau token à injected.js
         window.postMessage({ type: "REQUEST_NEW_TOKEN" }, "*");
-
-        return true; // Indique que la réponse sera envoyée de manière asynchrone
+        
+        return true; // Important pour les réponses asynchrones
     }
 });
 

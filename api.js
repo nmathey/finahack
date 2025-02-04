@@ -22,13 +22,22 @@ export async function requestNewToken() {
                 return;
             }
             
+            // Définir un timeout pour la réponse
+            const timeoutId = setTimeout(() => {
+                reject("Délai d'attente dépassé pour la réponse");
+            }, 10000); // 10 secondes de timeout
+
             // Envoyer le message à l'onglet spécifique
             chrome.tabs.sendMessage(tabs[0].id, { action: "REQUEST_TOKEN" }, (response) => {
-                console.log("Message envoyé à content.js pour demander un nouveau token");
+                clearTimeout(timeoutId); // Annuler le timeout
+
                 if (chrome.runtime.lastError) {
                     console.error("Erreur lors de l'envoi du message à content.js:", chrome.runtime.lastError);
                     reject(chrome.runtime.lastError);
-                } else if (response && response.token) {
+                    return;
+                }
+
+                if (response && response.token) {
                     chrome.storage.local.set({ sessionToken: response.token }, () => {
                         console.log("✅ Token mis à jour automatiquement !");
                         resolve(response.token);
@@ -44,49 +53,59 @@ export async function requestNewToken() {
 
 // Fonction générique pour effectuer une requête API avec gestion des erreurs et du token expiré
 export async function apiRequest(endpoint, method = "GET", body = null) {
-    let token = await getSessionToken();
-    if (!token) {
-        console.error("❌ Aucun token disponible, demande de rafraîchissement...");
-        token = await requestNewToken();
-        if (!token) return null;
-    }
+    async function executerRequete(token) {
+        const apiUrl = `https://api.finary.com${endpoint}`;
+        const headers = {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+        };
 
-    const apiUrl = `https://api.finary.com${endpoint}`;
-    let headers = {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json"
-    };
+        const options = { method, headers };
+        if (["POST", "PUT", "PATCH"].includes(method) && body) {
+            options.body = JSON.stringify(body);
+        }
 
-    let options = { method, headers };
-
-    // Ajouter un body uniquement si la méthode est POST, PUT ou PATCH
-    if (["POST", "PUT", "PATCH"].includes(method) && body) {
-        options.body = JSON.stringify(body);
+        console.log(`📡 Exécution de la requête ${method} vers ${endpoint}`);
+        const response = await fetch(apiUrl, options);
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('TOKEN_EXPIRE');
+            }
+            throw new Error(`Erreur HTTP! statut: ${response.status}`);
+        }
+        
+        return await response.json();
     }
 
     try {
-        let response = await fetch(apiUrl, options);
-
-        if (response.status === 401) {
-            console.warn("🔄 Token expiré, tentative de rafraîchissement...");
+        // Première tentative avec le token actuel
+        let token = await getSessionToken();
+        if (!token) {
+            console.log("❌ Aucun token disponible, demande d'un nouveau...");
             token = await requestNewToken();
-            if (token) {
-                headers["Authorization"] = `Bearer ${token}`;
-                options.headers = headers;
-                response = await fetch(apiUrl, options);
-            } else {
-                return null;
+            if (!token) {
+                throw new Error("Impossible d'obtenir un token valide");
             }
         }
 
-        if (!response.ok) {
-            console.error(`❌ Erreur API (${response.status}):`, await response.text());
-            return null;
+        try {
+            return await executerRequete(token);
+        } catch (error) {
+            if (error.message === 'TOKEN_EXPIRE') {
+                console.log("🔄 Token expiré, renouvellement...");
+                token = await requestNewToken();
+                if (!token) {
+                    throw new Error("Impossible de renouveler le token");
+                }
+                // Nouvelle tentative avec le nouveau token
+                console.log("🔄 Nouvelle tentative avec le token renouvelé");
+                return await executerRequete(token);
+            }
+            throw error;
         }
-
-        return await response.json();
     } catch (error) {
-        console.error("❌ Erreur lors de la requête API :", error);
+        console.error("❌ Échec de la requête API:", error.message);
         return null;
     }
 }
