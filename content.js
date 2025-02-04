@@ -127,7 +127,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             yearly_taxes: 1000,
             rental_period: "annual",
             rental_type: "nue",
-            place_id: "ChIJF2Cu_iDm9EcREgxjJap4mCM"
+            place_id: "EjY5ODAgTiBGZWRlcmFsIEh3eSBzdWl0ZSAxMTAsIEJvY2EgUmF0b24sIEZMIDMzNDMyLCBVU0EiJRojChYKFAoSCZdwCUH24diIER1Jcn6F7iQtEglzdWl0ZSAxMTA"
         };
 
         import(chrome.runtime.getURL('add_real_estate.js'))
