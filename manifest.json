@@ -27,7 +27,7 @@
   ],
   "content_scripts": [
     {
-      "matches": ["*://*/*"],
+      "matches": ["https://*.finary.com/*"],
       "js": ["content.js"]
     }
   ],

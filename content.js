@@ -83,29 +83,54 @@ let sessionToken = null; // Déclaration de la variable globale
 
 // Listen for the message from the injected script
 window.addEventListener('message', function(event) {
-// We only accept messages from our own page
-if (event.source !== window) return;
+    // We only accept messages from our own page
+    if (event.source !== window) return;
 
-if (event.data.type && event.data.type === 'FROM_PAGE') {
-  // Now we have the session token
-  sessionToken = event.data.token; // Stocker le token globalement
-  console.log("✅ Token reçu:", sessionToken);
+    if (event.data.type && event.data.type === 'FROM_PAGE') {
+        // Now we have the session token
+        sessionToken = event.data.token; // Stocker le token globalement
+        console.log("✅ Token reçu:", sessionToken);
 
-  // Stocker le token dans chrome.storage
-  chrome.storage.local.set({ sessionToken: sessionToken }, () => {
-    console.log("✅ Token stocké dans chrome.storage.local");
-  });
+        // Stocker le token dans chrome.storage
+        chrome.storage.local.set({ sessionToken: sessionToken }, () => {
+            console.log("✅ Token stocké dans chrome.storage.local");
+        });
 
-  // Call your API using the session token
-  const apiUrl_me = 'https://api.finary.com/users/me';
-  fetchData(apiUrl_me, sessionToken, "me");
-  const apiUrl_holdings = 'https://api.finary.com/organizations/7422e38a-2fc5-4115-9691-516de6fba200/memberships/35cb45e6-68b0-4d3c-a0d1-f304ce11eb59/holdings_accounts';
-  fetchData(apiUrl_holdings, sessionToken, "holdings");
-  extractAssets();
-}
+        // Call your API using the session token
+        /*const apiUrl_me = 'https://api.finary.com/users/me';
+        fetchData(apiUrl_me, sessionToken, "me");
+        const apiUrl_holdings = 'https://api.finary.com/organizations/7422e38a-2fc5-4115-9691-516de6fba200/memberships/35cb45e6-68b0-4d3c-a0d1-f304ce11eb59/holdings_accounts';
+        fetchData(apiUrl_holdings, sessionToken, "holdings").then(() => {
+            extractAssets();
+        }).catch(error => console.error("❌ Erreur lors de l'extraction des assets :", error));
+      */
+    }
 });
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+console.log("Content script chargé !");
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log("Message reçu dans content.js:", message);
+
+    if (message.action === "REQUEST_TOKEN") {
+        console.log("Message reçu de api.js pour demander un nouveau token");
+
+        window.addEventListener("message", function(event) {
+            if (event.source !== window) return;
+            if (event.data.type && event.data.type === "FROM_PAGE") {
+                console.log("Token reçu de la page:", event.data.token);
+                sendResponse({ token: event.data.token });
+            }
+        }, { once: true });
+
+        // Trigger the function in `injected.js` to get a new token
+        console.log("Envoi du message à injected.js pour demander un nouveau token");
+        window.postMessage({ type: "REQUEST_NEW_TOKEN" }, "*");
+
+        return true; // Indique que la réponse sera envoyée de manière asynchrone
+    }
+});
+
+/* chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "openRealEstateForm") {
         if (!sessionToken) {
             console.error("❌ Erreur: sessionToken est indéfini !");
@@ -139,5 +164,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             .catch(error => console.error("❌ Erreur API :", error));
     }
 });
+*/
 
 
