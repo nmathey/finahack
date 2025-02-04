@@ -25,13 +25,7 @@ Pour le moment, l'extension est compatible avec Chrome et Edge.
 5. Trois boutons devraient apparaître. Cliquez sur 'Charger l'extension non empaquetée...', puis choisissez le dossier contenant les codes sources et le précieux manifest.json.
 
 ## Feuille de route / To Do List
-- [x] Récupération du token de la session en cours
-- [x] POC - Récupérer l'ensemble des holdings
-- [x] POC - Afficher une modal box (testé avec une vue consolidée du portefeuille financier + immo hors résidence principale)
-- [x] POC - Insertion d'un nouvel asset (testé avec un bien immobilier)
-- [ ] POC - Modifier directement l'affichage/ergonomie de l'application  
-- [ ] Traduire en JavaScript l'ensemble des fonctions Python de https://github.com/lasconic/finary_uapi
-- [ ] Fonctionnalité de synchronisation avec RealT pour les biens immobiliers
+- [ ] Fonctionnalité de synchronisation de son portefeuille RealT pour les biens immobiliers ❤️
 - Vos idées via une issue ;)
 
 ## Contributions!
