@@ -3,9 +3,18 @@
   "name": "FinaHack",
   "version": "0.1.0",
   "description": "Une extension pour intéragir avec Finary",
-  "permissions": ["contextMenus", "scripting", "activeTab", "cookies", "storage", "tabs"],
+  "permissions": [
+    "contextMenus", 
+    "scripting", 
+    "activeTab", 
+    "cookies", 
+    "storage", 
+    "tabs",
+    "notifications"
+  ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.mjs",
+    "type": "module"
   },
   "icons": {
     "16": "extension_icon16.png",
