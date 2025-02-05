@@ -98,12 +98,11 @@ window.addEventListener('message', function(event) {
 
         // Call your API using the session token
         /*const apiUrl_me = 'https://api.finary.com/users/me';
-        fetchData(apiUrl_me, sessionToken, "me");
+        fetchData(apiUrl_me, sessionToken, "me");*/
         const apiUrl_holdings = 'https://api.finary.com/organizations/7422e38a-2fc5-4115-9691-516de6fba200/memberships/35cb45e6-68b0-4d3c-a0d1-f304ce11eb59/holdings_accounts';
         fetchData(apiUrl_holdings, sessionToken, "holdings").then(() => {
             extractAssets();
         }).catch(error => console.error("❌ Erreur lors de l'extraction des assets :", error));
-      */
     }
 });
 

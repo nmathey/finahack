@@ -4,11 +4,12 @@ import { handleMenuClick } from "./actions.js";
 chrome.runtime.onInstalled.addListener(() => {
     console.log("🛠️ Extension installée, création des menus...");
     const menuItems = [
-        { id: "showJsonTab_me", title: "Afficher JSON_me" },
         { id: "showJsonTab_holdings", title: "Afficher JSON_holdings" },
         { id: "showAssetsSummary", title: "Voir résumé des assets" },
         { id: "addRealEstate", title: "Ajouter un bien immobilier" },
         { id: "showDisplayCurrencyCode", title: "Afficher la devise configurée" },
+        { id: "showRealTTokens", title: "Afficher les RealT Tokens" },
+        { id: "setRealTToken", title: "Configurer le token RealT" },
     ];
     
     menuItems.forEach(item => {

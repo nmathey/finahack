@@ -23,7 +23,8 @@
     "128": "extension_icon128.png"
   },
   "host_permissions": [
-    "*://*.finary.com/*"
+    "*://*.finary.com/*",
+    "https://api.realtoken.community/*"
   ],
   "content_scripts": [
     {
@@ -33,8 +34,10 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["injected.js", "consolidateAssets.js", "add_real_estate.js"],
+      "resources": ["injected.js", "consolidateAssets.js", "add_real_estate.js", "token-input.html", "token-input.js", "json_viewer_realt.html", "realt-viewer.js"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],"content_security_policy": {
+        "extension_pages": "script-src 'self'; object-src 'self'"
+    }
 }

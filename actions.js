@@ -1,4 +1,5 @@
 import { apiRequest, getSessionToken } from "./api.js";
+import { RealTSync } from "./realt-sync.js";
 
 export async function handleMenuClick(info, tab) {
     const token = await getSessionToken();
@@ -6,15 +7,7 @@ export async function handleMenuClick(info, tab) {
         console.error("Token de session non disponible");
         return;
     }
-    if (info.menuItemId === "showJsonTab_me") {
-        chrome.storage.local.get('me', (result) => {
-            if (result.me) {
-                chrome.tabs.create({ url: chrome.runtime.getURL("json_viewer_me.html") });
-            } else {
-                console.error("Pas de données JSON disponibles.");
-            }
-        });
-    } else if (info.menuItemId === "showJsonTab_holdings") {
+    if (info.menuItemId === "showJsonTab_holdings") {
         chrome.storage.local.get('holdings', (result) => {
             if (result.holdings) {
                 chrome.tabs.create({ url: chrome.runtime.getURL("json_viewer_holdings.html") });
@@ -52,5 +45,17 @@ export async function handleMenuClick(info, tab) {
                 message: `Devise actuelle : ${userData.result.ui_configuration.display_currency.code}`
             });
         }
+    } else if (info.menuItemId === "showRealTTokens") {
+        const tokens = await RealTSync.getAllRealTTokens();
+        chrome.storage.local.set({ 'realtTokens': tokens }, () => {
+            chrome.tabs.create({ url: chrome.runtime.getURL("json_viewer_realt.html") });
+        });
+    } else if (info.menuItemId === "setRealTToken") {
+        chrome.windows.create({
+            url: chrome.runtime.getURL("token-input.html"),
+            type: "popup",
+            width: 500,
+            height: 300
+        });
     }
 }
