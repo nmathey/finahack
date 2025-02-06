@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingElement = document.getElementById('loading');
     const errorElement = document.getElementById('error');
 
+    console.log('DOM loaded, fetching wallet data...');
+
     const syntaxHighlight = (json) => {
         if (typeof json !== 'string') {
             json = JSON.stringify(json, null, 2);
@@ -24,8 +26,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    chrome.storage.local.get(['realtTokens', 'realtTokensTimestamp'], function(data) {
-        console.log("Data from storage:", data);
+    // Get all storage data for debugging
+    chrome.storage.local.get(null, (all) => {
+        console.log('All storage data:', all);
+    });
+
+    chrome.storage.local.get(['walletRealTokens'], function(data) {
+        console.log("Raw wallet tokens data:", data);
         loadingElement.style.display = 'none';
 
         if (chrome.runtime.lastError) {
@@ -35,18 +42,22 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (!data || !data.realtTokens) {
-            console.error('No tokens found');
-            errorElement.textContent = 'Aucun token trouvé dans le storage';
+        if (!data || !data.walletRealTokens) {
+            console.error('No wallet tokens found');
+            errorElement.textContent = 'Aucun token RealT trouvé dans votre wallet';
             errorElement.style.display = 'block';
             return;
         }
 
-        if (data.realtTokensTimestamp) {
-            const date = new Date(data.realtTokensTimestamp);
-            console.log("Tokens last updated:", date.toLocaleString());
-        }
+        const formattedTokens = data.walletRealTokens.map(token => ({
+            nom: token.realTDetails?.fullName || token.tokenName,
+            symbole: token.realTDetails?.symbol || token.tokenSymbol,
+            balance: token.balance,
+            adresseContrat: token.contractAddress,
+            details: token.realTDetails || {}
+        }));
 
-        jsonElement.innerHTML = syntaxHighlight(data.realtTokens);
+        console.log('Formatted tokens:', formattedTokens);
+        jsonElement.innerHTML = syntaxHighlight(JSON.stringify(formattedTokens, null, 2));
     });
 });

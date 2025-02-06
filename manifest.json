@@ -13,7 +13,7 @@
     "notifications"
   ],
   "background": {
-    "service_worker": "background.mjs",
+    "service_worker": "background.js",
     "type": "module"
   },
   "icons": {
@@ -24,7 +24,8 @@
   },
   "host_permissions": [
     "*://*.finary.com/*",
-    "https://api.realtoken.community/*"
+    "https://api.realtoken.community/*",
+    "https://blockscout.com/*"
   ],
   "content_scripts": [
     {

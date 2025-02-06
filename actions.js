@@ -46,9 +46,10 @@ export async function handleMenuClick(info, tab) {
                 message: `Devise actuelle : ${userData.result.ui_configuration.display_currency.code}`
             });
         }
-    } else if (info.menuItemId === "showHoldingsRealEstate") {
-        const tokens = await RealTSync.getFinaryRealTProperties();
-        chrome.storage.local.set({ 'realtTokens': tokens }, () => {
+    } else if (info.menuItemId === "showRealTokenWallet") {
+        const realtSync = new RealTSync();
+        const tokens = await realtSync.getWalletRealTTokens("0x10df7dd932e655c01cc7a35ec23711b1d4153882");
+        chrome.storage.local.set({ 'walletRealTokens': tokens }, () => {
             chrome.tabs.create({ url: chrome.runtime.getURL("json_viewer_realt.html") });
         });
     } else if (info.menuItemId === "setRealTToken") {

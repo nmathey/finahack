@@ -1,14 +1,14 @@
-import { handleMenuClick } from "./actions.js";
+import { handleMenuClick } from './actions.js';
 
-// Ajouter une entrée au menu contextuel lors de l'installation de l'extension
-chrome.runtime.onInstalled.addListener(() => {
+// Initialize context menus
+const initializeMenus = () => {
     console.log("🛠️ Extension installée, création des menus...");
     const menuItems = [
         { id: "showJsonTab_holdings", title: "Afficher JSON_holdings" },
         { id: "showAssetsSummary", title: "Voir résumé des assets" },
         { id: "addRealEstate", title: "Ajouter un bien immobilier" },
         { id: "showDisplayCurrencyCode", title: "Afficher la devise configurée" },
-        { id: "showHoldingsRealEstate", title: "Afficher les assets immobiliers RealT détenus" },
+        { id: "showRealTokenWallet", title: "Afficher les RealToken détenus" },
         { id: "setRealTToken", title: "Configurer le token RealT" },
     ];
     
@@ -17,15 +17,12 @@ chrome.runtime.onInstalled.addListener(() => {
             id: item.id,
             title: item.title,
             contexts: ["all"]
-        }, () => {
-            if (chrome.runtime.lastError) {
-                console.error(`❌ Erreur menu ${item.id}:`, chrome.runtime.lastError);
-            } else {
-                console.log(`✅ Menu ajouté: ${item.title}`);
-            }
         });
     });
-});
+};
 
-// Gérer les actions du menu contextuel
+// Initialize extension
+chrome.runtime.onInstalled.addListener(initializeMenus);
+
+// Handle menu clicks
 chrome.contextMenus.onClicked.addListener(handleMenuClick);
