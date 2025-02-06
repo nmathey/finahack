@@ -1,8 +1,9 @@
-import { apiRequest, getSessionToken } from "./api.js";
+import { FinaryClient } from "./api.js";
 import { RealTSync } from "./realt-sync.js";
 
 export async function handleMenuClick(info, tab) {
-    const token = await getSessionToken();
+    const finaryClient = new FinaryClient();
+    const token = await finaryClient.getSessionToken();
     if (!token) {
         console.error("Token de session non disponible");
         return;
@@ -36,7 +37,7 @@ export async function handleMenuClick(info, tab) {
     } else if (info.menuItemId === "addRealEstate") {
         chrome.tabs.sendMessage(tab.id, { action: "openRealEstateForm" });
     } else if (info.menuItemId === "showDisplayCurrencyCode") {
-        const userData = await apiRequest("/users/me", "GET", token);
+        const userData = await finaryClient.apiRequest("/users/me", "GET", token);
         if (userData) {
             chrome.notifications.create({
                 type: "basic",
@@ -45,8 +46,8 @@ export async function handleMenuClick(info, tab) {
                 message: `Devise actuelle : ${userData.result.ui_configuration.display_currency.code}`
             });
         }
-    } else if (info.menuItemId === "showRealTTokens") {
-        const tokens = await RealTSync.getAllRealTTokens();
+    } else if (info.menuItemId === "showHoldingsRealEstate") {
+        const tokens = await RealTSync.getFinaryRealTProperties();
         chrome.storage.local.set({ 'realtTokens': tokens }, () => {
             chrome.tabs.create({ url: chrome.runtime.getURL("json_viewer_realt.html") });
         });

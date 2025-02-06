@@ -1,18 +1,24 @@
-// Fonction pour récupérer le token de session stocké
-export async function getSessionToken() {
-    return new Promise((resolve) => {
-        chrome.storage.local.get("sessionToken", (data) => {
-            if (chrome.runtime.lastError) {
-                console.error("Erreur lors de la récupération du token de session:", chrome.runtime.lastError);
-                resolve(null);
-            } else {
-                resolve(data.sessionToken);
-            }
-        });
-    });
-}
+export class FinaryClient {
+    constructor() {
+        this.token = null;
+        this.baseUrl = 'https://api.finary.com';
+    }
 
-export async function requestNewToken() {
+    async getSessionToken() {
+        return new Promise((resolve) => {
+            chrome.storage.local.get('sessionToken', (result) => {
+                resolve(result.sessionToken || null);
+            });
+        });
+    }
+
+    async setSessionToken(token) {
+        return new Promise((resolve) => {
+            chrome.storage.local.set({ sessionToken: token }, resolve);
+        });
+    }
+
+    async requestNewToken() {
     console.log("🔄 Demande de mise à jour du token de session...");
     return new Promise((resolve, reject) => {
         // Trouver d'abord l'onglet actif
@@ -52,55 +58,49 @@ export async function requestNewToken() {
 }
 
 // Fonction générique pour effectuer une requête API avec gestion des erreurs et du token expiré
-export async function apiRequest(endpoint, method = "GET", body = null) {
-    async function executerRequete(token) {
-        const apiUrl = `https://api.finary.com${endpoint}`;
-        const headers = {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
+async apiRequest(endpoint, options = {}) {
+    try {
+        if (!this.token) {
+            this.token = await this.getSessionToken();
+            if (!this.token) {
+                console.log("❌ Aucun token disponible, demande d'un nouveau...");
+                this.token = await this.requestNewToken();
+                if (!this.token) {
+                    throw new Error("Impossible d'obtenir un token valide");
+                }
+            }
+        }
+
+        const executerRequete = async (token) => {
+            const response = await fetch(`${this.baseUrl}${endpoint}`, {
+                ...options,
+                headers: {
+                    ...options.headers,
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('TOKEN_EXPIRE');
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
         };
 
-        const options = { method, headers };
-        if (["POST", "PUT", "PATCH"].includes(method) && body) {
-            options.body = JSON.stringify(body);
-        }
-
-        console.log(`📡 Exécution de la requête ${method} vers ${endpoint}`);
-        const response = await fetch(apiUrl, options);
-        
-        if (!response.ok) {
-            if (response.status === 401) {
-                throw new Error('TOKEN_EXPIRE');
-            }
-            throw new Error(`Erreur HTTP! statut: ${response.status}`);
-        }
-        
-        return await response.json();
-    }
-
-    try {
-        // Première tentative avec le token actuel
-        let token = await getSessionToken();
-        if (!token) {
-            console.log("❌ Aucun token disponible, demande d'un nouveau...");
-            token = await requestNewToken();
-            if (!token) {
-                throw new Error("Impossible d'obtenir un token valide");
-            }
-        }
-
         try {
-            return await executerRequete(token);
+            return await executerRequete(this.token);
         } catch (error) {
             if (error.message === 'TOKEN_EXPIRE') {
                 console.log("🔄 Token expiré, renouvellement...");
-                token = await requestNewToken();
-                if (!token) {
+                this.token = await this.requestNewToken();
+                if (!this.token) {
                     throw new Error("Impossible de renouveler le token");
                 }
-                // Nouvelle tentative avec le nouveau token
-                console.log("🔄 Nouvelle tentative avec le token renouvelé");
-                return await executerRequete(token);
+                return await executerRequete(this.token);
             }
             throw error;
         }
@@ -108,4 +108,30 @@ export async function apiRequest(endpoint, method = "GET", body = null) {
         console.error("❌ Échec de la requête API:", error.message);
         return null;
     }
+}
+
+// Add specific API methods
+async getRealEstateAssets() {
+    return await this.apiRequest('/users/me/real_estates');
+}
+
+async addRealEstateAsset(data) {
+    return await this.apiRequest('/users/me/real_estates', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    });
+}
+
+async updateRealEstateAsset(data) {
+    return await this.apiRequest(`/users/me/real_estates/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+    });
+}
+
+async deleteRealEstateAsset(id) {
+    return await this.apiRequest(`/users/me/real_estates/${id}`, {
+        method: 'DELETE'
+    });
+}
 }

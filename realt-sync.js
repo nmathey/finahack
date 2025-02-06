@@ -1,3 +1,5 @@
+import { FinaryClient } from "./api.js";
+
 export class RealTSync {
     constructor(realtApiToken) {
         this.realtApiToken = realtApiToken;
@@ -129,6 +131,41 @@ export class RealTSync {
     
         } catch (error) {
             console.error('Error getting RealT tokens:', error);
+            throw error;
+        }
+    }
+
+    static async getFinaryRealTProperties() {
+        try {
+            const finaryClient = new FinaryClient();
+            const token = await finaryClient.getSessionToken();
+            
+            if (!token) {
+                throw new Error("Token Finary non disponible");
+            }
+    
+            const response = await finaryClient.getRealEstateAssets();
+            console.log("Raw Finary response:", response);
+            
+            if (!response || !response.result) {
+                throw new Error("Impossible de récupérer les biens immobiliers depuis Finary");
+            }
+    
+            const propertiesArray = Array.isArray(response.result) ? response.result : [];
+    
+            if (!Array.isArray(propertiesArray)) {
+                throw new Error("Format de données Finary invalide");
+            }
+    
+            const realtProperties = propertiesArray.filter(property => 
+                property?.description?.startsWith("RealT - ")
+            );
+    
+            console.log(`Found ${realtProperties.length} RealT properties in Finary`);
+            return realtProperties;
+    
+        } catch (error) {
+            console.error("Error getting RealT properties from Finary:", error);
             throw error;
         }
     }

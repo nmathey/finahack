@@ -8,7 +8,7 @@ chrome.runtime.onInstalled.addListener(() => {
         { id: "showAssetsSummary", title: "Voir résumé des assets" },
         { id: "addRealEstate", title: "Ajouter un bien immobilier" },
         { id: "showDisplayCurrencyCode", title: "Afficher la devise configurée" },
-        { id: "showRealTTokens", title: "Afficher les RealT Tokens" },
+        { id: "showHoldingsRealEstate", title: "Afficher les assets immobiliers RealT détenus" },
         { id: "setRealTToken", title: "Configurer le token RealT" },
     ];
     
