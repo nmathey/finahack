@@ -246,4 +246,16 @@ export class RealTSync {
             throw error;
         }
     }
+
+    async getWalletRealTTokens_realestate(walletAddress) {
+        try {
+            const allTokens = await this.getWalletRealTTokens(walletAddress);
+            return allTokens.filter(token => 
+                token.realTDetails?.productType === "real_estate_rental"
+            );
+        } catch (error) {
+            console.error("Error filtering real estate tokens:", error);
+            throw error;
+        }
+    }
 }
