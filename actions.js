@@ -59,5 +59,11 @@ export async function handleMenuClick(info, tab) {
             width: 500,
             height: 300
         });
+    } else if (info.menuItemId === "showRealTokenFinary") {
+        const realtSync = new RealTSync();
+        const tokens = await realtSync.getFinaryRealTProperties();
+        chrome.storage.local.set({ 'FinaryRealTokens': tokens }, () => {
+            chrome.tabs.create({ url: chrome.runtime.getURL("json_viewer_realt.html") });
+        });
     }
 }

@@ -31,8 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('All storage data:', all);
     });
 
-    chrome.storage.local.get(['walletRealTokens'], function(data) {
-        console.log("Raw wallet tokens data:", data);
+    chrome.storage.local.get(['FinaryRealTokens'], function(data) {
+        console.log("Raw data:", data);
         loadingElement.style.display = 'none';
 
         if (chrome.runtime.lastError) {
@@ -42,19 +42,19 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (!data || !data.walletRealTokens) {
+        if (!data || !data.FinaryRealTokens) {
             console.error('No wallet tokens found');
-            errorElement.textContent = 'Aucun token RealT trouvé dans votre wallet';
+            errorElement.textContent = 'Aucun token RealT trouvé';
             errorElement.style.display = 'block';
             return;
         }
 
-        const formattedTokens = data.walletRealTokens.map(token => ({
-            nom: token.realTDetails?.fullName || token.tokenName,
-            symbole: token.realTDetails?.symbol || token.tokenSymbol,
+        const formattedTokens = data.FinaryRealTokens.map(token => ({
+            nom: token.tokenDetails?.fullName || token.tokenName,
+            symbole: token.tokenDetails?.symbol || token.tokenSymbol,
             balance: token.balance,
             adresseContrat: token.contractAddress,
-            details: token.realTDetails || {}
+            details: token.tokenDetails || {}
         }));
 
         console.log('Formatted tokens:', formattedTokens);

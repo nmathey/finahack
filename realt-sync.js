@@ -134,7 +134,7 @@ export class RealTSync {
         }
     }
 
-    static async getFinaryRealTProperties() {
+    async getFinaryRealTProperties() {
         try {
             const finaryClient = new FinaryClient();
             const token = await finaryClient.getSessionToken();
@@ -156,9 +156,25 @@ export class RealTSync {
                 throw new Error("Format de données Finary invalide");
             }
     
-            const realtProperties = propertiesArray.filter(property => 
-                property?.description?.startsWith("RealT - ")
-            );
+            const allRealTTokens = await this.getAllRealTTokens();
+            
+            const realtProperties = propertiesArray
+                .filter(property => property?.description?.startsWith("RealT - "))
+                .map(property => {
+                    // Extract contract address from description (format: 0x...)
+                    const contractAddress = property.description.match(/0x[a-fA-F0-9]{40}/)?.[0]?.toLowerCase();
+                    
+                    // Get token details if contract address is found
+                    const tokenDetails = contractAddress 
+                        ? allRealTTokens.find(t => t?.uuid?.toLowerCase() === contractAddress)
+                        : null;
+
+                    return {
+                        ...property,
+                        contractAddress,
+                        tokenDetails
+                    };
+                });
     
             console.log(`Found ${realtProperties.length} RealT properties in Finary`);
             return realtProperties;
