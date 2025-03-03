@@ -111,6 +111,29 @@ async apiRequest(endpoint, options = {}) {
 }
 
 // Add specific API methods
+
+async getPlaceId(address) {
+    try {
+        // Encode address for URL
+        const encodedAddress = encodeURIComponent(address);
+        
+        // Make API request
+        const response = await this.apiRequest(`/real_estates/autocomplete?query=${encodedAddress}`);
+        
+        if (!response?.result?.[0]?.place_id) {
+            console.warn(`No place_id found for address: ${address}`);
+            return null;
+        }
+
+        console.log(`Found place_id for ${address}:`, response.result[0].place_id);
+        return response.result[0].place_id;
+        
+    } catch (error) {
+        console.error('Error getting place_id:', error);
+        throw error;
+    }
+}
+
 async getRealEstateAssets() {
     return await this.apiRequest('/users/me/real_estates');
 }
