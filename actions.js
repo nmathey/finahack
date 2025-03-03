@@ -65,5 +65,71 @@ export async function handleMenuClick(info, tab) {
         chrome.storage.local.set({ 'FinaryRealTokens': tokens }, () => {
             chrome.tabs.create({ url: chrome.runtime.getURL("json_viewer_realt.html") });
         });
+    } else if (info.menuItemId === "syncRealTokenFinary") {
+        try {
+            const walletAddress = "0x10df7dd932e655c01cc7a35ec23711b1d4153882"; // Add wallet address
+            const realtSync = new RealTSync();
+            const finaryClient = new FinaryClient();
+            
+            // Add notification for sync start
+            chrome.notifications.create({
+                type: "basic",
+                iconUrl: "extension_icon128.png",
+                title: "Synchronisation RealT",
+                message: "Début de la synchronisation avec Finary..."
+            });
+    
+            const result = await realtSync.syncWalletWithFinary(walletAddress, finaryClient);
+            console.log('Sync result:', result);
+    
+            // Add notification for sync result
+            chrome.notifications.create({
+                type: "basic",
+                iconUrl: "extension_icon128.png",
+                title: "Synchronisation RealT",
+                message: result.success 
+                    ? `Synchronisation terminée: ${result.updated} mis à jour, ${result.added} ajoutés, ${result.deleted} supprimés`
+                    : `Erreur: ${result.error}`
+            });
+        } catch (error) {
+            console.error('Sync error:', error);
+            chrome.notifications.create({
+                type: "basic",
+                iconUrl: "extension_icon128.png",
+                title: "Erreur Synchronisation",
+                message: error.message
+            });
+        }
+    } else if (info.menuItemId === "deleteAllRealTokenFinary") {
+        try {
+            const realtSync = new RealTSync();
+            const finaryClient = new FinaryClient();
+            
+            chrome.notifications.create({
+                type: "basic",
+                iconUrl: "extension_icon128.png",
+                title: "Suppression RealT",
+                message: "Début de la suppression des tokens RealT..."
+            });
+    
+            const result = await realtSync.deleteAllFinaryRealTTokens(finaryClient);
+            
+            chrome.notifications.create({
+                type: "basic",
+                iconUrl: "extension_icon128.png",
+                title: "Suppression RealT",
+                message: result.success 
+                    ? `${result.deletedTokens}/${result.totalTokens} tokens supprimés`
+                    : `Erreur: ${result.error}`
+            });
+        } catch (error) {
+            console.error('Delete error:', error);
+            chrome.notifications.create({
+                type: "basic",
+                iconUrl: "extension_icon128.png",
+                title: "Erreur Suppression",
+                message: error.message
+            });
+        }
     }
 }

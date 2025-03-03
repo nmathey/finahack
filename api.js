@@ -111,6 +111,36 @@ async apiRequest(endpoint, options = {}) {
 }
 
 // Add specific API methods
+async updateDisplayCurrency(currencyCode) {
+    try {
+        const response = await this.apiRequest("/users/me", {
+            method: "PATCH",  // Changed from PUT to PATCH
+            body: JSON.stringify({
+                ui_configuration: {
+                    display_currency: {
+                        code: currencyCode
+                    }
+                }
+            })
+        });
+
+        // Check for response.result instead of response.success
+        if (!response?.result) {
+            throw new Error(`Failed to update display currency to ${currencyCode}`);
+        }
+
+        const actualCurrency = response.result.ui_configuration.display_currency.code;
+        if (actualCurrency !== currencyCode) {
+            throw new Error(`Currency update failed. Expected ${currencyCode}, got ${actualCurrency}`);
+        }
+
+        console.log(`Display currency successfully updated to ${currencyCode}`);
+        return response;
+    } catch (error) {
+        console.error('Error updating display currency:', error);
+        throw error;
+    }
+}
 
 async getPlaceId(address) {
     try {

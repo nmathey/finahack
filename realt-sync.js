@@ -372,11 +372,18 @@ export class RealTSync {
     }
     
     async syncWalletWithFinary(walletAddress, finaryClient) {
+        let initialCurrency = null;
+        
         try {
             console.log('Starting sync for wallet:', walletAddress);
             
             // Save initial currency and set to USD for RealT tokens
-            const initialCurrency = await this.handleDisplayCurrency(finaryClient, 'USD');
+            try {
+                initialCurrency = await this.handleDisplayCurrency(finaryClient, 'USD');
+            } catch (currencyError) {
+                console.error('Error handling currency:', currencyError);
+                throw new Error('Failed to handle display currency');
+            }
             
             const { toUpdate, toDelete, toAdd } = await this.compareWalletAndFinaryTokens(walletAddress);
     
@@ -462,15 +469,67 @@ export class RealTSync {
     
         } catch (error) {
             console.error('Sync error:', error);
-            // Try to restore initial currency in case of error
-            try {
-                if (initialCurrency && initialCurrency !== 'USD') {
+            
+            // Restore initial currency if it was changed
+            if (initialCurrency && initialCurrency !== 'USD') {
+                try {
                     await this.handleDisplayCurrency(finaryClient, initialCurrency);
+                } catch (currencyError) {
+                    console.error('Error restoring currency:', currencyError);
                 }
-            } catch (currencyError) {
-                console.error('Error restoring currency:', currencyError);
             }
             
+            throw error;
+        }
+    }
+
+    async handleDisplayCurrency(finaryClient, requiredCurrency) {
+        try {
+            const userData = await finaryClient.apiRequest("/users/me", "GET");
+            const currentCurrency = userData.result.ui_configuration.display_currency.code;
+            
+            console.log(`Current display currency: ${currentCurrency}`);
+            
+            if (currentCurrency !== requiredCurrency) {
+                console.log(`Updating display currency to ${requiredCurrency}`);
+                await finaryClient.updateDisplayCurrency(requiredCurrency);
+            }
+            
+            return currentCurrency;
+        } catch (error) {
+            console.error('Error handling display currency:', error);
+            throw error;
+        }
+    }
+
+    async deleteAllFinaryRealTTokens(finaryClient) {
+        try {
+            console.log('Starting deletion of all RealT tokens from Finary...');
+            
+            // Get all RealT properties from Finary
+            const finaryTokens = await this.getFinaryRealTProperties();
+            console.log(`Found ${finaryTokens.length} RealT tokens to delete`);
+    
+            // Delete each token
+            let deletedCount = 0;
+            for (const token of finaryTokens) {
+                try {
+                    await finaryClient.deleteRealEstateAsset(token.id);
+                    deletedCount++;
+                    console.log(`Deleted token: ${token.description}`);
+                } catch (deleteError) {
+                    console.error(`Error deleting token ${token.description}:`, deleteError);
+                }
+            }
+    
+            return {
+                success: true,
+                totalTokens: finaryTokens.length,
+                deletedTokens: deletedCount
+            };
+    
+        } catch (error) {
+            console.error('Error deleting RealT tokens:', error);
             return {
                 success: false,
                 error: error.message
