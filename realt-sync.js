@@ -331,13 +331,36 @@ export class RealTSync {
         return { toUpdate, toDelete, toAdd };
     }
     
+    async handleDisplayCurrency(finaryClient, requiredCurrency) {
+        try {
+            // Get current display currency
+            const userData = await finaryClient.apiRequest("/users/me", "GET");
+            const currentCurrency = userData.result.ui_configuration.display_currency.code;
+            
+            console.log(`Current display currency: ${currentCurrency}`);
+            
+            if (currentCurrency !== requiredCurrency) {
+                console.log(`Updating display currency to ${requiredCurrency}`);
+                await finaryClient.updateDisplayCurrency(requiredCurrency);
+            }
+            
+            return currentCurrency;
+        } catch (error) {
+            console.error('Error handling display currency:', error);
+            throw error;
+        }
+    }
+    
     async syncWalletWithFinary(walletAddress, finaryClient) {
         try {
             console.log('Starting sync for wallet:', walletAddress);
             
+            // Save initial currency and set to USD for RealT tokens
+            const initialCurrency = await this.handleDisplayCurrency(finaryClient, 'USD');
+            
             const { toUpdate, toDelete, toAdd } = await this.compareWalletAndFinaryTokens(walletAddress);
     
-            // Mettre à jour les tokens existants
+            // Process updates
             for (const item of toUpdate) {
                 await finaryClient.updateRealEstateAsset({
                     id: item.finary.id,
@@ -349,12 +372,12 @@ export class RealTSync {
                 });
             }
     
-            // Supprimer les tokens qui ne sont plus dans le wallet
+            // Process deletions
             for (const token of toDelete) {
                 await finaryClient.deleteRealEstateAsset(token.id);
             }
     
-            // Ajouter les nouveaux tokens
+            // Process additions
             for (const token of toAdd) {
                 await finaryClient.addRealEstateAsset({
                     name: token.tokenName,
@@ -366,15 +389,31 @@ export class RealTSync {
                 });
             }
     
+            // Restore initial currency if different
+            if (initialCurrency !== 'USD') {
+                console.log(`Restoring display currency to ${initialCurrency}`);
+                await this.handleDisplayCurrency(finaryClient, initialCurrency);
+            }
+    
             return {
                 success: true,
                 updated: toUpdate.length,
                 deleted: toDelete.length,
-                added: toAdd.length
+                added: toAdd.length,
+                currencyHandled: initialCurrency !== 'USD'
             };
     
         } catch (error) {
             console.error('Sync error:', error);
+            // Try to restore initial currency in case of error
+            try {
+                if (initialCurrency && initialCurrency !== 'USD') {
+                    await this.handleDisplayCurrency(finaryClient, initialCurrency);
+                }
+            } catch (currencyError) {
+                console.error('Error restoring currency:', currencyError);
+            }
+            
             return {
                 success: false,
                 error: error.message
