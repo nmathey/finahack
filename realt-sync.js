@@ -379,13 +379,50 @@ export class RealTSync {
     
             // Process additions
             for (const token of toAdd) {
+                const tokenDetails = token.realTDetails;
                 await finaryClient.addRealEstateAsset({
-                    name: token.tokenName,
-                    value: token.realTDetails.netAssetValue * token.balance,
-                    quantity: token.balance,
-                    currency: 'USD',
-                    category: 'tokenized',
-                    description: `RealT - ${token.tokenName} (${token.contractAddress})`
+                    is_automated_valuation: false,
+                    is_furnished: false,
+                    is_new: false,
+                    has_lift: false,
+                    has_sauna: false,
+                    has_pool: false,
+                    flooring_quality: "",
+                    flooring_condition: "",
+                    windows_quality: "",
+                    windows_condition: "",
+                    bathrooms_quality: "",
+                    bathrooms_condition: "",
+                    kitchen_quality: "",
+                    kitchen_condition: "",
+                    general_quality: "",
+                    general_condition: "",
+                    parking_spaces: "",
+                    garage_spaces: "",
+                    number_of_rooms: "",
+                    number_of_bathrooms: "",
+                    number_of_floors: "",
+                    floor_number: "",
+                    balcony_area: "",
+                    garden_area: "",
+                    category: "rent",
+                    is_estimable: false,
+                    user_estimated_value: tokenDetails.tokenPrice * tokenDetails.totalTokens,
+                    description: `RealT - ${token.tokenName} (${token.contractAddress})`,
+                    surface: tokenDetails.squareFeet * 0.09290304, // Convert sq ft to sq m
+                    agency_fees: "",
+                    notary_fees: "",
+                    furnishing_fees: "",
+                    renovation_fees: "",
+                    buying_price: tokenDetails.tokenPrice * tokenDetails.totalTokens,
+                    building_type: "apartment",
+                    ownership_percentage: (token.balance / tokenDetails.totalTokens) * 100,
+                    place_id: "EjY5ODAgTiBGZWRlcmFsIEh3eSBzdWl0ZSAxMTAsIEJvY2EgUmF0b24sIEZMIDMzNDMyLCBVU0EiJRojChYKFAoSCZdwCUH24diIER1Jcn6F7iQtEglzdWl0ZSAxMTA",
+                    monthly_charges: tokenDetails.propertyMaintenanceMonthly || 0,
+                    monthly_rent: tokenDetails.netRentMonth || 0,
+                    yearly_taxes: tokenDetails.propertyTaxes || 0,
+                    rental_period: "annual",
+                    rental_type: "nue"
                 });
             }
     
