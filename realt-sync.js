@@ -350,6 +350,26 @@ export class RealTSync {
             throw error;
         }
     }
+
+    // Add validation helper method
+    async validateTokenDetails(token) {
+        const required = [
+            'tokenPrice',
+            'totalTokens',
+            'squareFeet',
+            'propertyMaintenanceMonthly',
+            'netRentMonth',
+            'propertyTaxes'
+        ];
+
+        const missing = required.filter(field => 
+            !token.realTDetails || !token.realTDetails[field]
+        );
+
+        if (missing.length > 0) {
+            throw new Error(`Missing required fields for token ${token.tokenName}: ${missing.join(', ')}`);
+        }
+    }
     
     async syncWalletWithFinary(walletAddress, finaryClient) {
         try {
