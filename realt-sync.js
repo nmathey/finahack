@@ -274,4 +274,111 @@ export class RealTSync {
             throw error;
         }
     }
+
+    async compareWalletAndFinaryTokens(walletAddress) {
+        try {
+            // Récupérer les tokens du wallet et de Finary
+            const walletTokens = await this.getWalletRealTTokens_realestate(walletAddress);
+            const finaryTokens = await this.getFinaryRealTProperties();
+    
+            console.log('Comparing tokens:', {
+                wallet: walletTokens.length,
+                finary: finaryTokens.length
+            });
+    
+            // Identifier les tokens à mettre à jour, supprimer et ajouter
+            const updates = this.findTokensToUpdate(walletTokens, finaryTokens);
+            console.log('Token changes needed:', updates);
+    
+            return updates;
+        } catch (error) {
+            console.error('Error comparing tokens:', error);
+            throw error;
+        }
+    }
+    
+    findTokensToUpdate(walletTokens, finaryTokens) {
+        const toUpdate = [];
+        const toDelete = [];
+        const toAdd = [];
+    
+        // Tokens à mettre à jour ou supprimer
+        finaryTokens.forEach(finaryToken => {
+            const walletToken = walletTokens.find(wt => 
+                wt.contractAddress.toLowerCase() === finaryToken.contractAddress?.toLowerCase()
+            );
+    
+            if (walletToken) {
+                toUpdate.push({
+                    finary: finaryToken,
+                    wallet: walletToken
+                });
+            } else {
+                toDelete.push(finaryToken);
+            }
+        });
+    
+        // Nouveaux tokens à ajouter
+        walletTokens.forEach(walletToken => {
+            const exists = finaryTokens.some(ft => 
+                ft.contractAddress?.toLowerCase() === walletToken.contractAddress.toLowerCase()
+            );
+            if (!exists) {
+                toAdd.push(walletToken);
+            }
+        });
+    
+        return { toUpdate, toDelete, toAdd };
+    }
+    
+    async syncWalletWithFinary(walletAddress, finaryClient) {
+        try {
+            console.log('Starting sync for wallet:', walletAddress);
+            
+            const { toUpdate, toDelete, toAdd } = await this.compareWalletAndFinaryTokens(walletAddress);
+    
+            // Mettre à jour les tokens existants
+            for (const item of toUpdate) {
+                await finaryClient.updateRealEstateAsset({
+                    id: item.finary.id,
+                    name: item.wallet.tokenName,
+                    value: item.wallet.realTDetails.netAssetValue * item.wallet.balance,
+                    quantity: item.wallet.balance,
+                    currency: 'USD',
+                    description: `RealT - ${item.wallet.tokenName} (${item.wallet.contractAddress})`
+                });
+            }
+    
+            // Supprimer les tokens qui ne sont plus dans le wallet
+            for (const token of toDelete) {
+                await finaryClient.deleteRealEstateAsset(token.id);
+            }
+    
+            // Ajouter les nouveaux tokens
+            for (const token of toAdd) {
+                await finaryClient.addRealEstateAsset({
+                    name: token.tokenName,
+                    value: token.realTDetails.netAssetValue * token.balance,
+                    quantity: token.balance,
+                    currency: 'USD',
+                    category: 'tokenized',
+                    description: `RealT - ${token.tokenName} (${token.contractAddress})`
+                });
+            }
+    
+            return {
+                success: true,
+                updated: toUpdate.length,
+                deleted: toDelete.length,
+                added: toAdd.length
+            };
+    
+        } catch (error) {
+            console.error('Sync error:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
 }
