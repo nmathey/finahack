@@ -137,38 +137,58 @@ export class RealTSync {
     async getFinaryRealTProperties() {
         try {
             const finaryClient = new FinaryClient();
+            
+            // Get and validate token
             const token = await finaryClient.getSessionToken();
+            console.log('Token status:', token ? 'Present' : 'Missing');
             
             if (!token) {
                 throw new Error("Token Finary non disponible");
             }
     
+            // Get real estate assets
+            console.log('Fetching real estate assets from Finary...');
             const response = await finaryClient.getRealEstateAssets();
             console.log("Raw Finary response:", response);
             
-            if (!response || !response.result) {
-                throw new Error("Impossible de récupérer les biens immobiliers depuis Finary");
+            // Validate response structure
+            if (!response) {
+                throw new Error("Réponse vide de l'API Finary");
             }
     
-            const propertiesArray = Array.isArray(response.result) ? response.result : [];
-    
-            if (!Array.isArray(propertiesArray)) {
-                throw new Error("Format de données Finary invalide");
+            if (!response.result) {
+                console.error('Invalid response structure:', response);
+                throw new Error("Structure de réponse Finary invalide");
             }
     
+            // Convert to array if needed
+            const propertiesArray = Array.isArray(response.result) 
+                ? response.result 
+                : (typeof response.result === 'object' ? [response.result] : []);
+    
+            console.log(`Found ${propertiesArray.length} total properties`);
+    
+            // Get RealT tokens for comparison
+            console.log('Fetching RealT tokens for comparison...');
             const allRealTTokens = await this.getAllRealTTokens();
             
+            // Filter and map RealT properties
             const realtProperties = propertiesArray
-                .filter(property => property?.description?.startsWith("RealT - "))
+                .filter(property => {
+                    const isRealT = property?.description?.startsWith("RealT - ");
+                    if (isRealT) {
+                        console.log(`Found RealT property: ${property.description}`);
+                    }
+                    return isRealT;
+                })
                 .map(property => {
-                    // Extract contract address from description (format: 0x...)
                     const contractAddress = property.description.match(/0x[a-fA-F0-9]{40}/)?.[0]?.toLowerCase();
+                    console.log(`Extracted contract address: ${contractAddress}`);
                     
-                    // Get token details if contract address is found
                     const tokenDetails = contractAddress 
                         ? allRealTTokens.find(t => t?.uuid?.toLowerCase() === contractAddress)
                         : null;
-
+    
                     return {
                         ...property,
                         contractAddress,
@@ -181,6 +201,7 @@ export class RealTSync {
     
         } catch (error) {
             console.error("Error getting RealT properties from Finary:", error);
+            console.error("Stack trace:", error.stack);
             throw error;
         }
     }
@@ -373,6 +394,12 @@ export class RealTSync {
     
     async syncWalletWithFinary(walletAddress, finaryClient) {
         let initialCurrency = null;
+        let processedTokens = {
+            updates: 0,
+            deletions: 0,
+            additions: 0,
+            errors: []
+        };
         
         try {
             console.log('Starting sync for wallet:', walletAddress);
@@ -380,34 +407,79 @@ export class RealTSync {
             // Save initial currency and set to USD for RealT tokens
             try {
                 initialCurrency = await this.handleDisplayCurrency(finaryClient, 'USD');
+                console.log('Currency handling completed. Initial currency:', initialCurrency);
             } catch (currencyError) {
                 console.error('Error handling currency:', currencyError);
                 throw new Error('Failed to handle display currency');
             }
             
             const { toUpdate, toDelete, toAdd } = await this.compareWalletAndFinaryTokens(walletAddress);
+            console.log(`Found ${toUpdate.length} tokens to update, ${toDelete.length} to delete, ${toAdd.length} to add`);
     
             // Process updates
+            console.log('\n--- Starting Updates ---');
             for (const item of toUpdate) {
-                await finaryClient.updateRealEstateAsset({
-                    id: item.finary.id,
-                    name: item.wallet.tokenName,
-                    value: item.wallet.realTDetails.netAssetValue * item.wallet.balance,
-                    quantity: item.wallet.balance,
-                    currency: 'USD',
-                    description: `RealT - ${item.wallet.tokenName} (${item.wallet.contractAddress})`
-                });
+                try {
+                    console.log(`\nUpdating token: ${item.wallet.tokenName} (${item.wallet.contractAddress})`);
+                    console.log('Current values:', {
+                        balance: item.wallet.balance,
+                        value: item.wallet.realTDetails.netAssetValue * item.wallet.balance
+                    });
+                    
+                    await finaryClient.updateRealEstateAsset({
+                        id: item.finary.id,
+                        name: item.wallet.tokenName,
+                        value: item.wallet.realTDetails.netAssetValue * item.wallet.balance,
+                        quantity: item.wallet.balance,
+                        currency: 'USD',
+                        description: `RealT - ${item.wallet.tokenName} (${item.wallet.contractAddress})`
+                    });
+                    processedTokens.updates++;
+                    console.log('✅ Update successful');
+                } catch (error) {
+                    console.error(`❌ Error updating token ${item.wallet.tokenName}:`, error);
+                    processedTokens.errors.push({
+                        type: 'update',
+                        token: item.wallet.tokenName,
+                        error: error.message
+                    });
+                }
             }
     
             // Process deletions
+            console.log('\n--- Starting Deletions ---');
             for (const token of toDelete) {
-                await finaryClient.deleteRealEstateAsset(token.id);
+                try {
+                    console.log(`\nDeleting token: ${token.description}`);
+                    await finaryClient.deleteRealEstateAsset(token.id);
+                    processedTokens.deletions++;
+                    console.log('✅ Deletion successful');
+                } catch (error) {
+                    console.error(`❌ Error deleting token ${token.description}:`, error);
+                    processedTokens.errors.push({
+                        type: 'delete',
+                        token: token.description,
+                        error: error.message
+                    });
+                }
             }
     
             // Process additions
+            console.log('\n--- Starting Additions ---');
             for (const token of toAdd) {
-                const tokenDetails = token.realTDetails;
-                await finaryClient.addRealEstateAsset({
+                try {
+                    console.log(`\nAdding token: ${token.tokenName} (${token.contractAddress})`);
+                    console.log('Token details:', {
+                        balance: token.balance,
+                        price: token.realTDetails.tokenPrice,
+                        totalTokens: token.realTDetails.totalTokens,
+                        ownership_percentage: (token.balance / token.realTDetails.totalTokens) * 100 
+                    });
+    
+                    await this.validateTokenDetails(token);
+                    const tokenDetails = token.realTDetails;
+                    
+                    await finaryClient.addRealEstateAsset({
                     is_automated_valuation: false,
                     is_furnished: false,
                     is_new: false,
@@ -434,16 +506,16 @@ export class RealTSync {
                     garden_area: "",
                     category: "rent",
                     is_estimable: false,
-                    user_estimated_value: tokenDetails.tokenPrice * tokenDetails.totalTokens,
+                    user_estimated_value: (tokenDetails.tokenPrice * tokenDetails.totalTokens),
                     description: `RealT - ${token.tokenName} (${token.contractAddress})`,
                     surface: tokenDetails.squareFeet * 0.09290304, // Convert sq ft to sq m
                     agency_fees: "",
                     notary_fees: "",
                     furnishing_fees: "",
                     renovation_fees: "",
-                    buying_price: tokenDetails.tokenPrice * tokenDetails.totalTokens,
+                    buying_price: (tokenDetails.tokenPrice * tokenDetails.totalTokens),
                     building_type: "apartment",
-                    ownership_percentage: (token.balance / tokenDetails.totalTokens) * 100,
+                    ownership_percentage: parseFloat((token.balance / tokenDetails.totalTokens) * 100),
                     place_id: "EjY5ODAgTiBGZWRlcmFsIEh3eSBzdWl0ZSAxMTAsIEJvY2EgUmF0b24sIEZMIDMzNDMyLCBVU0EiJRojChYKFAoSCZdwCUH24diIER1Jcn6F7iQtEglzdWl0ZSAxMTA",
                     monthly_charges: tokenDetails.propertyMaintenanceMonthly || 0,
                     monthly_rent: tokenDetails.netRentMonth || 0,
@@ -451,28 +523,43 @@ export class RealTSync {
                     rental_period: "annual",
                     rental_type: "nue"
                 });
+                processedTokens.additions++;
+                console.log('✅ Addition successful');
+            } catch (error) {
+                console.error(`❌ Error adding token ${token.tokenName}:`, error);
+                processedTokens.errors.push({
+                    type: 'add',
+                    token: token.tokenName,
+                    error: error.message
+                });
             }
-    
-            // Restore initial currency if different
-            if (initialCurrency !== 'USD') {
-                console.log(`Restoring display currency to ${initialCurrency}`);
-                await this.handleDisplayCurrency(finaryClient, initialCurrency);
-            }
-    
-            return {
-                success: true,
-                updated: toUpdate.length,
-                deleted: toDelete.length,
-                added: toAdd.length,
-                currencyHandled: initialCurrency !== 'USD'
-            };
-    
+        }
+
+        // Restore initial currency if different
+        if (initialCurrency !== 'USD') {
+            console.log(`\nRestoring display currency to ${initialCurrency}`);
+            await this.handleDisplayCurrency(finaryClient, initialCurrency);
+        }
+
+        console.log('\n--- Sync Summary ---');
+        console.log('Processed:', processedTokens);
+
+        return {
+            success: true,
+            updated: processedTokens.updates,
+            deleted: processedTokens.deletions,
+            added: processedTokens.additions,
+            errors: processedTokens.errors,
+            currencyHandled: initialCurrency !== 'USD'
+        };
+
         } catch (error) {
-            console.error('Sync error:', error);
+            console.error('\n❌ Sync error:', error);
             
             // Restore initial currency if it was changed
             if (initialCurrency && initialCurrency !== 'USD') {
                 try {
+                    console.log(`\nAttempting to restore currency to ${initialCurrency}`);
                     await this.handleDisplayCurrency(finaryClient, initialCurrency);
                 } catch (currencyError) {
                     console.error('Error restoring currency:', currencyError);
@@ -503,33 +590,76 @@ export class RealTSync {
     }
 
     async deleteAllFinaryRealTTokens(finaryClient) {
-        try {
-            console.log('Starting deletion of all RealT tokens from Finary...');
-            
-            // Get all RealT properties from Finary
-            const finaryTokens = await this.getFinaryRealTProperties();
-            console.log(`Found ${finaryTokens.length} RealT tokens to delete`);
+        const MAX_RETRIES = 3;
+        const RETRY_DELAY = 2000;
+        const BETWEEN_CALLS_DELAY = 1000; // Délai entre chaque appel API
     
-            // Delete each token
+        try {
+            console.log('🔄 Starting deletion of all RealT tokens from Finary...');
+            
+            const retryApiCall = async (fn, retryCount = 0) => {
+                try {
+                    return await fn();
+                } catch (error) {
+                    console.error(`❌ API error (attempt ${retryCount + 1}/${MAX_RETRIES}):`, error);
+                    
+                    if (retryCount < MAX_RETRIES && 
+                        (error.message.includes('500') || error.message.includes('HTTP error'))) {
+                        console.log(`⏳ Waiting ${RETRY_DELAY/1000}s before retry...`);
+                        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                        return retryApiCall(fn, retryCount + 1);
+                    }
+                    throw error;
+                }
+            };
+    
+            // Get properties with retry
+            const finaryTokens = await retryApiCall(async () => {
+                await new Promise(resolve => setTimeout(resolve, BETWEEN_CALLS_DELAY));
+                const properties = await this.getFinaryRealTProperties();
+                if (!properties) {
+                    throw new Error('No RealT properties found in Finary');
+                }
+                return properties;
+            });
+    
+            console.log(`📝 Found ${finaryTokens.length} RealT tokens to delete`);
+    
             let deletedCount = 0;
+            let errors = [];
+    
+            // Delete tokens with retry
             for (const token of finaryTokens) {
                 try {
-                    await finaryClient.deleteRealEstateAsset(token.id);
+                    await retryApiCall(async () => {
+                        console.log(`🗑️ Deleting token: ${token.description}`);
+                        await new Promise(resolve => setTimeout(resolve, BETWEEN_CALLS_DELAY));
+                        await finaryClient.deleteRealEstateAsset(token.id);
+                    });
+                    
                     deletedCount++;
-                    console.log(`Deleted token: ${token.description}`);
-                } catch (deleteError) {
-                    console.error(`Error deleting token ${token.description}:`, deleteError);
+                    console.log(`✅ Successfully deleted: ${token.description}`);
+                } catch (error) {
+                    console.error(`❌ Failed to delete ${token.description}:`, error);
+                    errors.push({
+                        token: token.description,
+                        error: error.message
+                    });
                 }
             }
     
-            return {
+            const summary = {
                 success: true,
                 totalTokens: finaryTokens.length,
-                deletedTokens: deletedCount
+                deletedTokens: deletedCount,
+                errors: errors
             };
     
+            console.log('📊 Deletion Summary:', summary);
+            return summary;
+    
         } catch (error) {
-            console.error('Error deleting RealT tokens:', error);
+            console.error('❌ Fatal error during deletion:', error);
             return {
                 success: false,
                 error: error.message
