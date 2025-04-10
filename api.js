@@ -180,6 +180,20 @@ export class FinaryClient {
     }
 
     // Add specific API methods
+    async getSelectedMembershipId() {
+        try {
+            const response = await this.apiRequest("/users/me");
+            if (!response?.result?.ui_configuration?.selected_membership?.id) {
+                throw new Error("Selected membership ID not found in user configuration");
+            }
+            console.log("Selected membership ID:", response.result.ui_configuration.selected_membership.id);
+            return response.result.ui_configuration.selected_membership.id;
+        } catch (error) {
+            console.error("❌ Error getting selected membership ID:", error.message);
+            return null;
+        }
+    }
+
     async updateDisplayCurrency(currencyCode) {
         const response = await this.apiRequest("/users/me", {
             method: "PATCH",

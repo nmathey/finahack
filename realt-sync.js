@@ -38,6 +38,11 @@ export class RealTSync {
         };
         
         try {
+            // Get membership ID using finaryClient
+            const membershipId = await finaryClient.getSelectedMembershipId();
+            if (!membershipId) {
+                throw new Error("Impossible de récupérer l'ID du membership");
+            }
             // If walletAddresses is a string, convert it to an array
             const addresses = Array.isArray(walletAddresses) ? walletAddresses : [walletAddresses];
             console.log('Starting sync for wallets:', addresses);
@@ -114,18 +119,30 @@ export class RealTSync {
     
             // Process additions sequentially to avoid rate limiting
             console.log('\n--- Starting Additions ---');
-            for (const token of combined.toAdd) {
+            //for (const token of combined.toAdd) {
+            if (combined.toAdd.length > 0) {
+                // Ne traiter que le premier token
+                const token = combined.toAdd[0];
                 try {
                     console.log(`\nAdding token: ${token.tokenName} (${token.contractAddress})`);
-                    console.log('Token details:', {
-                        balance: token.balance,
-                        price: token.realTDetails.tokenPrice,
-                        totalTokens: token.realTDetails.totalTokens,
-                        ownership_percentage: (token.balance / token.realTDetails.totalTokens) * 100 
-                    });
-    
+                    
                     await this.validateTokenDetails(token);
                     const tokenDetails = token.realTDetails;
+                    const cleanTokenName = token.tokenName
+                        .replace('RealToken S', '')
+                        .replace('Holding', '')
+                        .trim();
+                    
+                    const placeId = await finaryClient.getPlaceId(cleanTokenName);
+
+                    console.log('Token details:', {
+                        balance: token.balance,
+                        price: tokenDetails.tokenPrice,
+                        totalTokens: tokenDetails.totalTokens,
+                        address: cleanTokenName,
+                        placeId: placeId,
+                        ownership_percentage: parseFloat((token.balance / tokenDetails.totalTokens)*100).toFixed(2) 
+                    });
                     
                     await this.retryApiCall(async () => {
                         await finaryClient.addRealEstateAsset({
@@ -164,8 +181,12 @@ export class RealTSync {
                             renovation_fees: "",
                             buying_price: (tokenDetails.tokenPrice * tokenDetails.totalTokens),
                             building_type: "apartment",
-                            ownership_percentage: parseFloat((token.balance / tokenDetails.totalTokens) * 100),
-                            place_id: "EjY5ODAgTiBGZWRlcmFsIEh3eSBzdWl0ZSAxMTAsIEJvY2EgUmF0b24sIEZMIDMzNDMyLCBVU0EiJRojChYKFAoSCZdwCUH24diIER1Jcn6F7iQtEglzdWl0ZSAxMTA",
+                            ownership_repartition: [{
+                                share: parseFloat((token.balance / tokenDetails.totalTokens)).toFixed(4),
+                                membership_id: membershipId
+                                }],
+                            //#Todo to fix below by providing real place_id
+                            place_id: placeId,
                             monthly_charges: tokenDetails.propertyMaintenanceMonthly || 0,
                             monthly_rent: tokenDetails.netRentMonth || 0,
                             yearly_taxes: tokenDetails.propertyTaxes || 0,
@@ -233,9 +254,9 @@ export class RealTSync {
                 });
             });
     
-            // Check if cache is valid (less than 7 days old)
+            // Check if cache is valid (less than 7 days old) -#Todo: Swith back from 365 to 7 days once code is finalized
             const now = Date.now();
-            const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+            const CACHE_DURATION = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
             
             if (cachedData.tokens && cachedData.timestamp && 
                 (now - cachedData.timestamp) < CACHE_DURATION) {
