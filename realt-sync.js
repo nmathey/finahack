@@ -141,7 +141,9 @@ export class RealTSync {
                         totalTokens: tokenDetails.totalTokens,
                         address: cleanTokenName,
                         placeId: placeId,
-                        ownership_percentage: parseFloat((token.balance / tokenDetails.totalTokens)*100).toFixed(2) 
+                        propertyType_from_RealT: tokenDetails.propertyType,
+                        propertyType_for_Finary: await this.get_building_type(tokenDetails.propertyType),
+                        ownership_percentage: parseFloat((token.balance / tokenDetails.totalTokens)*100).toFixed(4) 
                     });
                     
                     await this.retryApiCall(async () => {
@@ -180,12 +182,11 @@ export class RealTSync {
                             furnishing_fees: "",
                             renovation_fees: "",
                             buying_price: (tokenDetails.tokenPrice * tokenDetails.totalTokens),
-                            building_type: "apartment",
+                            building_type: await this.get_building_type(tokenDetails.propertyType),
                             ownership_repartition: [{
                                 share: parseFloat((token.balance / tokenDetails.totalTokens)).toFixed(4),
                                 membership_id: membershipId
                                 }],
-                            //#Todo to fix below by providing real place_id
                             place_id: placeId,
                             monthly_charges: tokenDetails.propertyMaintenanceMonthly || 0,
                             monthly_rent: tokenDetails.netRentMonth || 0,
@@ -542,6 +543,30 @@ export class RealTSync {
             console.error('Error handling display currency:', error);
             throw error;
         }
+    }
+
+    async get_building_type(realT_propertyType) {
+        // building type: house, building, apartment, land, commercial, parking_box, or other
+        // propertyType from RealT -> 1 = Single Family | 2 = Multi Family | 3 = Duplex | 4 = Condominium 
+        // | 6 = Mixed-Used | 8 = Quadplex | 9 = Commercial |10 = SFR Portfolio
+        let building_type = "other";
+        
+        switch (realT_propertyType) {
+            case 1:
+                building_type = "house";
+                break;
+            case 2:
+            case 3:
+            case 8:
+                building_type = "building";
+                break;
+            case 4:
+            case 9:
+                building_type = "commercial";
+                break;
+        }
+        
+        return building_type;
     }
 
     // Add validation helper method
