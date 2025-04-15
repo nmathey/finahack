@@ -79,7 +79,30 @@ export async function handleMenuClick(info, tab) {
                 message: "Début de la synchronisation avec Finary..."
             });
     
-            const result = await realtSync.syncWalletWithFinary(walletAddress, finaryClient);
+            const result = await realtSync.syncWalletWithFinary(walletAddress, finaryClient, (step, details) => {
+                let message = "Synchronisation en cours...";
+                if (step === "add" && details.tokenName && details.current && details.total) {
+                    message = `Ajout de ${details.tokenName} (${details.current}/${details.total})`;
+                } else if (step === "add" && details.tokenName) {
+                    message = `Ajout de ${details.tokenName}`;
+                } else if (step === "update" && details.tokenName && details.current && details.total) {
+                    message = `Mise à jour de ${details.tokenName} (${details.current}/${details.total})`;
+                } else if (step === "update" && details.tokenName) {
+                    message = `Mise à jour de ${details.tokenName}`;
+                } else if (step === "delete" && details.tokenName && details.current && details.total) {
+                    message = `Suppression de ${details.tokenName} (${details.current}/${details.total})`;
+                } else if (step === "delete" && details.tokenName) {
+                    message = `Suppression de ${details.tokenName}`;
+                } else if (step === "state" && details.message) {
+                    message = details.message;
+                }
+                chrome.notifications.create({
+                    type: "basic",
+                    iconUrl: "extension_icon128.png",
+                    title: "Synchronisation RealT",
+                    message
+                });
+            });
             console.log('Sync result:', result);
     
             // Add notification for sync result
@@ -112,7 +135,22 @@ export async function handleMenuClick(info, tab) {
                 message: "Début de la suppression des tokens RealT..."
             });
     
-            const result = await realtSync.deleteAllFinaryRealTTokens(finaryClient);
+            const result = await realtSync.deleteAllFinaryRealTTokens(finaryClient, (step, details) => {
+                let message = "Suppression en cours...";
+                if (step === "delete" && details.current && details.total) {
+                    message = `Suppression de ${details.tokenName} (${details.current}/${details.total})`;
+                } else if (step === "delete") {
+                    message = `Suppression de ${details.tokenName}`;
+                } else if (step === "state" && details.message) {
+                    message = details.message;
+                }
+                chrome.notifications.create({
+                    type: "basic",
+                    iconUrl: "extension_icon128.png",
+                    title: "Suppression RealT",
+                    message
+                });
+            });
             
             chrome.notifications.create({
                 type: "basic",

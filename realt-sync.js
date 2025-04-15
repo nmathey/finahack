@@ -28,7 +28,14 @@ export class RealTSync {
         return address ? address.toLowerCase() : null;
     }
 
-    async syncWalletWithFinary(walletAddresses, finaryClient) {
+    /**
+     * Synchronise les tokens RealT d'un ou plusieurs wallets avec Finary.
+     * @param {string|string[]} walletAddresses - Adresse(s) du wallet à synchroniser.
+     * @param {FinaryClient} finaryClient - Instance du client Finary.
+     * @param {function} [progressCallback] - Callback appelé à chaque étape clé (add, update, delete, state).
+     * @returns {Promise<Object>} Résumé de la synchronisation.
+     */
+    async syncWalletWithFinary(walletAddresses, finaryClient, progressCallback) {
         let initialCurrency = null;
         let processedTokens = {
             updates: 0,
@@ -38,19 +45,21 @@ export class RealTSync {
         };
         
         try {
+            if (progressCallback) progressCallback("state", { message: "Préparation de la synchronisation..." });
             // Get membership ID using finaryClient
             const membershipId = await finaryClient.getSelectedMembershipId();
             if (!membershipId) {
                 throw new Error("Impossible de récupérer l'ID du membership");
             }
+            if (progressCallback) progressCallback("state", { message: "Récupération des adresses de wallet..." });
             // If walletAddresses is a string, convert it to an array
             const addresses = Array.isArray(walletAddresses) ? walletAddresses : [walletAddresses];
             console.log('Starting sync for wallets:', addresses);
-            
+            if (progressCallback) progressCallback("state", { message: "Gestion de la devise d'affichage..." });
             // Save initial currency and set to USD for RealT tokens
             initialCurrency = await this.handleDisplayCurrency(finaryClient, 'USD');
             console.log('Currency handling completed. Initial currency:', initialCurrency);
-            
+            if (progressCallback) progressCallback("state", { message: "Comparaison des tokens..." });
             // Process each wallet in parallel using Promise.all
             const walletComparisonResults = await Promise.all(
                 addresses.map(address => this.compareWalletAndFinaryTokens(address))
@@ -64,12 +73,14 @@ export class RealTSync {
                 return acc;
             }, { toUpdate: [], toDelete: [], toAdd: [] });
             
+            if (progressCallback) progressCallback("state", { message: `Mises à jour: ${combined.toUpdate.length}, suppressions: ${combined.toDelete.length}, ajouts: ${combined.toAdd.length}` });
             console.log(`Found ${combined.toUpdate.length} tokens to update, ${combined.toDelete.length} to delete, ${combined.toAdd.length} to add`);
     
             // Process updates
             console.log('\n--- Starting Updates ---');
             await Promise.all(combined.toUpdate.map(async (item) => {
                 try {
+                    if (progressCallback) progressCallback("update", { tokenName: item.wallet.tokenName });
                     console.log(`\nUpdating token: ${item.wallet.tokenName} (${item.wallet.contractAddress})`);
                     console.log('Current values:', {
                         balance: item.wallet.balance,
@@ -100,6 +111,7 @@ export class RealTSync {
             console.log('\n--- Starting Deletions ---');
             for (const token of combined.toDelete) {
                 try {
+                    if (progressCallback) progressCallback("delete", { tokenName: token.description });
                     console.log(`\nDeleting token: ${token.description}`);
                     await this.retryApiCall(async () => {
                         await finaryClient.deleteRealEstateAsset(token.id);
@@ -122,6 +134,7 @@ export class RealTSync {
             for (const token of combined.toAdd) {
                 if (combined.toAdd.length > 0) {
                     try {
+                        if (progressCallback) progressCallback("add", { tokenName: token.tokenName });
                         console.log(`\nAdding token: ${token.tokenName} (${token.contractAddress})`);
                         
                         await this.validateTokenDetails(token);
@@ -207,12 +220,14 @@ export class RealTSync {
                 }
             }
 
+            if (progressCallback) progressCallback("state", { message: "Restauration de la devise initiale..." });
             // Restore initial currency if different
             if (initialCurrency !== 'USD') {
                 console.log(`\nRestoring display currency to ${initialCurrency}`);
                 await this.handleDisplayCurrency(finaryClient, initialCurrency);
             }
 
+            if (progressCallback) progressCallback("state", { message: "Synchronisation terminée." });
             console.log('\n--- Sync Summary ---');
             console.log('Processed:', processedTokens);
 
@@ -226,6 +241,7 @@ export class RealTSync {
             };
 
         } catch (error) {
+            if (progressCallback) progressCallback("state", { message: `Erreur: ${error.message}` });
             console.error('\n❌ Sync error:', error);
             
             // Restore initial currency if it was changed
@@ -256,7 +272,8 @@ export class RealTSync {
     
             // Check if cache is valid (less than 7 days old)
             const now = Date.now();
-            const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
+            const CACHE_DURATION = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds - Temporary for testing
+            // const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
             
             if (cachedData.tokens && cachedData.timestamp && 
                 (now - cachedData.timestamp) < CACHE_DURATION) {
@@ -588,12 +605,11 @@ export class RealTSync {
         }
     }
     
-    async deleteAllFinaryRealTTokens(finaryClient) {
+    async deleteAllFinaryRealTTokens(finaryClient, progressCallback) {
         const BETWEEN_CALLS_DELAY = 1000; // Délai entre chaque appel API
     
         try {
-            console.log('🔄 Starting deletion of all RealT tokens from Finary...');
-    
+            if (progressCallback) progressCallback("state", { message: "Préparation de la suppression..." });
             // Get properties with retry
             const finaryTokens = await this.retryApiCall(async () => {
                 const properties = await this.getFinaryRealTProperties();
@@ -603,14 +619,21 @@ export class RealTSync {
                 return properties;
             });
     
+            if (progressCallback) progressCallback("state", { message: `Suppression de ${finaryTokens.length} tokens...` });
             console.log(`📝 Found ${finaryTokens.length} RealT tokens to delete`);
     
             let deletedCount = 0;
             let errors = [];
     
             // Delete tokens with retry
-            for (const token of finaryTokens) {
+            for (let i = 0; i < finaryTokens.length; i++) {
+                const token = finaryTokens[i];
                 try {
+                    if (progressCallback) progressCallback("delete", {
+                        tokenName: token.description,
+                        current: i + 1,
+                        total: finaryTokens.length
+                    });
                     await this.retryApiCall(async () => {
                         console.log(`🗑️ Deleting token: ${token.description}`);
                         await finaryClient.deleteRealEstateAsset(token.id);
@@ -628,6 +651,7 @@ export class RealTSync {
                 }
             }
     
+            if (progressCallback) progressCallback("state", { message: "Suppression terminée." });
             const summary = {
                 success: true,
                 totalTokens: finaryTokens.length,
@@ -639,6 +663,7 @@ export class RealTSync {
             return summary;
     
         } catch (error) {
+            if (progressCallback) progressCallback("state", { message: `Erreur: ${error.message}` });
             console.error('❌ Fatal error during deletion:', error);
             return {
                 success: false,
