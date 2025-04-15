@@ -119,92 +119,91 @@ export class RealTSync {
     
             // Process additions sequentially to avoid rate limiting
             console.log('\n--- Starting Additions ---');
-            //for (const token of combined.toAdd) {
-            if (combined.toAdd.length > 0) {
-                // Ne traiter que le premier token
-                const token = combined.toAdd[0];
-                try {
-                    console.log(`\nAdding token: ${token.tokenName} (${token.contractAddress})`);
-                    
-                    await this.validateTokenDetails(token);
-                    const tokenDetails = token.realTDetails;
-                    const cleanTokenName = token.tokenName
-                        .replace('RealToken S', '')
-                        .replace('Holding', '')
-                        .trim();
-                    
-                    const placeId = await finaryClient.getPlaceId(cleanTokenName);
+            for (const token of combined.toAdd) {
+                if (combined.toAdd.length > 0) {
+                    try {
+                        console.log(`\nAdding token: ${token.tokenName} (${token.contractAddress})`);
+                        
+                        await this.validateTokenDetails(token);
+                        const tokenDetails = token.realTDetails;
+                        const cleanTokenName = token.tokenName
+                            .replace('RealToken S', '')
+                            .replace('Holding', '')
+                            .trim();
+                        
+                        const placeId = await finaryClient.getPlaceId(cleanTokenName);
 
-                    console.log('Token details:', {
-                        balance: token.balance,
-                        price: tokenDetails.tokenPrice,
-                        totalTokens: tokenDetails.totalTokens,
-                        address: cleanTokenName,
-                        placeId: placeId,
-                        propertyType_from_RealT: tokenDetails.propertyType,
-                        propertyType_for_Finary: await this.get_building_type(tokenDetails.propertyType),
-                        ownership_percentage: parseFloat((token.balance / tokenDetails.totalTokens)*100).toFixed(4) 
-                    });
-                    
-                    await this.retryApiCall(async () => {
-                        await finaryClient.addRealEstateAsset({
-                            is_automated_valuation: false,
-                            is_furnished: false,
-                            is_new: false,
-                            has_lift: false,
-                            has_sauna: false,
-                            has_pool: false,
-                            flooring_quality: "",
-                            flooring_condition: "",
-                            windows_quality: "",
-                            windows_condition: "",
-                            bathrooms_quality: "",
-                            bathrooms_condition: "",
-                            kitchen_quality: "",
-                            kitchen_condition: "",
-                            general_quality: "",
-                            general_condition: "",
-                            parking_spaces: "",
-                            garage_spaces: "",
-                            number_of_rooms: "",
-                            number_of_bathrooms: "",
-                            number_of_floors: "",
-                            floor_number: "",
-                            balcony_area: "",
-                            garden_area: "",
-                            category: "rent",
-                            is_estimable: false,
-                            user_estimated_value: (tokenDetails.tokenPrice * tokenDetails.totalTokens),
-                            description: `RealT - ${token.tokenName} (${token.contractAddress})`,
-                            surface: tokenDetails.squareFeet * 0.09290304, // Convert sq ft to sq m
-                            agency_fees: "",
-                            notary_fees: "",
-                            furnishing_fees: "",
-                            renovation_fees: "",
-                            buying_price: (tokenDetails.tokenPrice * tokenDetails.totalTokens),
-                            building_type: await this.get_building_type(tokenDetails.propertyType),
-                            ownership_repartition: [{
-                                share: parseFloat((token.balance / tokenDetails.totalTokens)).toFixed(4),
-                                membership_id: membershipId
-                                }],
-                            place_id: placeId,
-                            monthly_charges: tokenDetails.propertyMaintenanceMonthly || 0,
-                            monthly_rent: tokenDetails.netRentMonth || 0,
-                            yearly_taxes: tokenDetails.propertyTaxes || 0,
-                            rental_period: "annual",
-                            rental_type: "nue"
+                        console.log('Token details:', {
+                            balance: token.balance,
+                            price: tokenDetails.tokenPrice,
+                            totalTokens: tokenDetails.totalTokens,
+                            address: cleanTokenName,
+                            placeId: placeId,
+                            propertyType_from_RealT: tokenDetails.propertyType,
+                            propertyType_for_Finary: await this.get_building_type(tokenDetails.propertyType),
+                            ownership_percentage: parseFloat((token.balance / tokenDetails.totalTokens)*100).toFixed(4) 
                         });
-                        await new Promise(resolve => setTimeout(resolve, 1000)); // Add delay between API calls
-                    });
-                    processedTokens.additions++;
-                    console.log('✅ Addition successful');
-                } catch (error) {
-                    console.error(`❌ Error adding token ${token.tokenName}:`, error);
-                    processedTokens.errors.push({
-                        type: 'add',
-                        token: token.tokenName,
-                        error: error.message
-                    });
+                        
+                        await this.retryApiCall(async () => {
+                            await finaryClient.addRealEstateAsset({
+                                is_automated_valuation: false,
+                                is_furnished: false,
+                                is_new: false,
+                                has_lift: false,
+                                has_sauna: false,
+                                has_pool: false,
+                                flooring_quality: "",
+                                flooring_condition: "",
+                                windows_quality: "",
+                                windows_condition: "",
+                                bathrooms_quality: "",
+                                bathrooms_condition: "",
+                                kitchen_quality: "",
+                                kitchen_condition: "",
+                                general_quality: "",
+                                general_condition: "",
+                                parking_spaces: "",
+                                garage_spaces: "",
+                                number_of_rooms: "",
+                                number_of_bathrooms: "",
+                                number_of_floors: "",
+                                floor_number: "",
+                                balcony_area: "",
+                                garden_area: "",
+                                category: "rent",
+                                is_estimable: false,
+                                user_estimated_value: (tokenDetails.tokenPrice * tokenDetails.totalTokens),
+                                description: `RealT - ${token.tokenName} (${token.contractAddress})`,
+                                surface: tokenDetails.squareFeet * 0.09290304, // Convert sq ft to sq m
+                                agency_fees: "",
+                                notary_fees: "",
+                                furnishing_fees: "",
+                                renovation_fees: "",
+                                buying_price: (tokenDetails.tokenPrice * tokenDetails.totalTokens),
+                                building_type: await this.get_building_type(tokenDetails.propertyType),
+                                ownership_repartition: [{
+                                    share: parseFloat((token.balance / tokenDetails.totalTokens)).toFixed(4),
+                                    membership_id: membershipId
+                                    }],
+                                place_id: placeId,
+                                monthly_charges: tokenDetails.propertyMaintenanceMonthly || 0,
+                                monthly_rent: tokenDetails.netRentMonth || 0,
+                                yearly_taxes: tokenDetails.propertyTaxes || 0,
+                                rental_period: "annual",
+                                rental_type: "nue"
+                            });
+                            await new Promise(resolve => setTimeout(resolve, 1000)); // Add delay between API calls
+                        });
+                        processedTokens.additions++;
+                        console.log('✅ Addition successful');
+                    } catch (error) {
+                        console.error(`❌ Error adding token ${token.tokenName}:`, error);
+                        processedTokens.errors.push({
+                            type: 'add',
+                            token: token.tokenName,
+                            error: error.message
+                        });
+                    }
                 }
             }
 
@@ -255,9 +254,9 @@ export class RealTSync {
                 });
             });
     
-            // Check if cache is valid (less than 7 days old) -#Todo: Swith back from 365 to 7 days once code is finalized
+            // Check if cache is valid (less than 7 days old)
             const now = Date.now();
-            const CACHE_DURATION = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
+            const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
             
             if (cachedData.tokens && cachedData.timestamp && 
                 (now - cachedData.timestamp) < CACHE_DURATION) {
