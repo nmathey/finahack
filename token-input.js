@@ -1,3 +1,10 @@
+// Afficher le token existant s'il est déjà enregistré
+chrome.storage.local.get('realtToken', (result) => {
+    if (result.realtToken) {
+        document.getElementById('tokenInput').value = result.realtToken;
+    }
+});
+
 document.getElementById('saveButton').addEventListener('click', () => {
     const token = document.getElementById('tokenInput').value;
     if (token) {
