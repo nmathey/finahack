@@ -1,13 +1,13 @@
 import { FinaryClient } from "./api.js";
 
 /**
- * Classe permettant de synchroniser les tokens RealT avec Finary.
- * Fournit des méthodes pour récupérer, comparer, ajouter, mettre à jour et supprimer des tokens RealT,
- * ainsi que pour gérer la devise d'affichage et le cache local.
+ * Classe permettant de synchroniser les tokens de l'écosystème RealT avec Finary.
+ * Fournit des méthodes pour récupérer, comparer, ajouter, mettre à jour et supprimer des tokens RealT.
  */
 export class RealTSync {
     /**
-     * @param {string} [realtApiToken] - Token d'accès à l'API RealT (optionnel, sinon récupéré depuis le storage).
+     * @param {string} [realtApiToken] - Token d'authentification pour l'API RealT.
+     * @param {string} [realtApiUrl] - URL de l'API RealT.
      */
     constructor(realtApiToken) {
         this.realtApiToken = realtApiToken;
@@ -66,17 +66,15 @@ export class RealTSync {
         try {
             injectProgressModal();
             if (progressCallback) progressCallback("state", { message: "Préparation de la synchronisation..." });
-            // Get membership ID using finaryClient
             const membershipId = await finaryClient.getSelectedMembershipId();
             if (!membershipId) {
                 throw new Error("Impossible de récupérer l'ID du membership");
             }
             if (progressCallback) progressCallback("state", { message: "Récupération des adresses de wallet..." });
-            // If walletAddresses is a string, convert it to an array
             const addresses = Array.isArray(walletAddresses) ? walletAddresses : [walletAddresses];
             console.log('Starting sync for wallets:', addresses);
             if (progressCallback) progressCallback("state", { message: "Gestion de la devise d'affichage..." });
-            // Save initial currency and set to USD for RealT tokens
+            // #ToDo: gérer dynamiquement la devise de chaque token - pour l'instant, on force à USD
             initialCurrency = await this.handleDisplayCurrency(finaryClient, 'USD');
             console.log('Currency handling completed. Initial currency:', initialCurrency);
             if (progressCallback) progressCallback("state", { message: "Comparaison des tokens..." });
@@ -85,7 +83,6 @@ export class RealTSync {
                 addresses.map(address => this.compareWalletAndFinaryTokens(address))
             );
             
-            // Combine results from all wallets
             const combined = walletComparisonResults.reduce((acc, result) => {
                 acc.toUpdate = [...acc.toUpdate, ...result.toUpdate];
                 acc.toDelete = [...acc.toDelete, ...result.toDelete];
@@ -96,7 +93,6 @@ export class RealTSync {
             if (progressCallback) progressCallback("state", { message: `Mises à jour: ${combined.toUpdate.length}, suppressions: ${combined.toDelete.length}, ajouts: ${combined.toAdd.length}` });
             console.log(`Found ${combined.toUpdate.length} tokens to update, ${combined.toDelete.length} to delete, ${combined.toAdd.length} to add`);
     
-            // Process updates
             console.log('\n--- Starting Updates ---');
             await Promise.all(combined.toUpdate.map(async (item, idx) => {
                 try {
@@ -134,7 +130,6 @@ export class RealTSync {
                 }
             }));
     
-            // Process deletions sequentially to avoid rate limiting
             console.log('\n--- Starting Deletions ---');
             for (let idx = 0; idx < combined.toDelete.length; idx++) {
                 const token = combined.toDelete[idx];
@@ -164,7 +159,6 @@ export class RealTSync {
                 }
             }
     
-            // Process additions sequentially to avoid rate limiting
             console.log('\n--- Starting Additions ---');
             for (let idx = 0; idx < combined.toAdd.length; idx++) {
                 const token = combined.toAdd[idx];
@@ -271,7 +265,7 @@ export class RealTSync {
             });
 
             if (progressCallback) progressCallback("state", { message: "Restauration de la devise initiale..." });
-            // Restore initial currency if different
+            // #ToDo: restaurer la devise initiale dynamiquement si elle a été modifiée 
             if (initialCurrency !== 'USD') {
                 console.log(`\nRestoring display currency to ${initialCurrency}`);
                 await this.handleDisplayCurrency(finaryClient, initialCurrency);
@@ -299,7 +293,7 @@ export class RealTSync {
             if (progressCallback) progressCallback("state", { message: `Erreur: ${error.message}` });
             console.error('\n❌ Sync error:', error);
             
-            // Restore initial currency if it was changed
+            // #ToDo: restaurer la devise initiale dynamiquement si elle a été modifiée
             if (initialCurrency && initialCurrency !== 'USD') {
                 try {
                     console.log(`\nAttempting to restore currency to ${initialCurrency}`);
@@ -319,7 +313,6 @@ export class RealTSync {
      */
     async getAllRealTTokens() {
         try {
-            // Check cached data
             const cachedData = await new Promise((resolve) => {
                 chrome.storage.local.get(['allRealtTokens', 'allRealtTokensTimestamp'], (result) => {
                     resolve({
@@ -329,7 +322,7 @@ export class RealTSync {
                 });
             });
     
-            // Check if cache is valid (less than 7 days old)
+            // Utiliser un cache de 7 jours pour le details des tokens RealT provenant de l'API
             const now = Date.now();
             //const CACHE_DURATION = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds - Temporary for testing
             const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
@@ -363,13 +356,11 @@ export class RealTSync {
 
             const tokens = await response.json();
 
-            // Normalize contract addresses in cache
             const normalizedTokens = tokens.map(token => ({
                 ...token,
                 uuid: this.normalizeAddress(token.uuid)
             }));
 
-            // Update cache
             await new Promise((resolve) => {
                 chrome.storage.local.set({
                     allRealtTokens: normalizedTokens,
@@ -393,7 +384,6 @@ export class RealTSync {
         try {
             const finaryClient = new FinaryClient();
             
-            // Get and validate token
             const token = await finaryClient.getSessionToken();
             console.log('Token status:', token ? 'Present' : 'Missing');
             
@@ -401,11 +391,9 @@ export class RealTSync {
                 throw new Error("Token Finary non disponible");
             }
     
-            // Get real estate assets
             console.log('Fetching real estate assets from Finary...');
             const response = await finaryClient.getRealEstateAssets();
             
-            // Validate response structure
             if (!response) {
                 throw new Error("Réponse vide de l'API Finary");
             }
@@ -415,18 +403,15 @@ export class RealTSync {
                 throw new Error("Structure de réponse Finary invalide");
             }
     
-            // Convert to array if needed
             const propertiesArray = Array.isArray(response.result) 
                 ? response.result 
                 : (typeof response.result === 'object' ? [response.result] : []);
     
             console.log(`Found ${propertiesArray.length} total properties`);
     
-            // Get RealT tokens for comparison
             console.log('Fetching RealT tokens for comparison...');
             const allRealTTokens = await this.getAllRealTTokens();
             
-            // Filter and map RealT properties
             const realtProperties = propertiesArray
                 .filter(property => {
                     const isRealT = property?.description?.startsWith("RealT - ");
@@ -488,7 +473,6 @@ export class RealTSync {
 
             const data = await response.json();
             
-            // Use a Map for faster lookups
             const tokensMap = new Map();
             
             for (const tx of data.result) {
@@ -552,7 +536,6 @@ export class RealTSync {
      */
     async compareWalletAndFinaryTokens(walletAddress) {
         try {
-            // Fetch wallet tokens and Finary tokens in parallel
             const [walletTokens, finaryTokens] = await Promise.all([
                 this.getWalletRealTTokens_realestate(walletAddress),
                 this.getFinaryRealTProperties()
@@ -563,7 +546,6 @@ export class RealTSync {
                 finary: finaryTokens.length
             });
     
-            // Identify tokens to update, delete, and add
             const updates = this.findTokensToUpdate(walletTokens, finaryTokens);
             console.log('Token changes needed:', updates);
     
@@ -585,7 +567,6 @@ export class RealTSync {
         const toDelete = [];
         const toAdd = [];
     
-        // Create a Map for faster lookups
         const walletTokensMap = new Map(
             walletTokens.map(token => [token.contractAddress, token])
         );
@@ -596,7 +577,6 @@ export class RealTSync {
                 .map(token => token.contractAddress)
         );
     
-        // Tokens to update or delete
         for (const finaryToken of finaryTokens) {
             if (!finaryToken.contractAddress) {
                 toDelete.push(finaryToken);
@@ -615,7 +595,6 @@ export class RealTSync {
             }
         }
     
-        // New tokens to add
         for (const walletToken of walletTokens) {
             if (!finaryTokensAddresses.has(walletToken.contractAddress)) {
                 toAdd.push(walletToken);
@@ -631,9 +610,9 @@ export class RealTSync {
      * @param {string} requiredCurrency - Devise requise (ex: 'USD').
      * @returns {Promise<string>} Devise initiale.
      */
+    // #ToDo: A déplacer dans le client Finary
     async handleDisplayCurrency(finaryClient, requiredCurrency) {
         try {
-            // Get current display currency
             const userData = await finaryClient.apiRequest("/users/me", "GET");
             const currentCurrency = userData.result.ui_configuration.display_currency.code;
             
@@ -715,7 +694,6 @@ export class RealTSync {
     
         try {
             if (progressCallback) progressCallback("state", { message: "Préparation de la suppression...", progress: 0, log: "Préparation de la suppression..." });
-            // Get properties with retry
             const finaryTokens = await this.retryApiCall(async () => {
                 const properties = await this.getFinaryRealTProperties();
                 if (!properties) {
@@ -730,7 +708,6 @@ export class RealTSync {
             let deletedCount = 0;
             let errors = [];
     
-            // Delete tokens with retry
             for (let i = 0; i < finaryTokens.length; i++) {
                 const token = finaryTokens[i];
                 try {
