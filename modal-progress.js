@@ -36,7 +36,7 @@ function injectProgressModal() {
     width: 100%; height: 18px; background: #444; border-radius: 8px; margin: 18px 0 8px 0;
 }
 .fina-progress-bar {
-    height: 100%; width: 0%; background: linear-gradient(90deg,#569cd6,#b5cea8); border-radius: 8px;
+    height: 100%; width: 0%; background: linear-gradient(90deg,#000,#F1C086); border-radius: 8px;
     transition: width 0.3s;
 }
 #fina-modal-status { margin-bottom: 6px; }
