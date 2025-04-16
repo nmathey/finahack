@@ -1,20 +1,14 @@
-import { apiRequest, getSessionToken } from "./api.js";
+import { FinaryClient } from "./api.js";
+import { RealTSync } from "./realt-sync.js";
 
 export async function handleMenuClick(info, tab) {
-    const token = await getSessionToken();
+    const finaryClient = new FinaryClient();
+    const token = await finaryClient.getSessionToken();
     if (!token) {
         console.error("Token de session non disponible");
         return;
     }
-    if (info.menuItemId === "showJsonTab_me") {
-        chrome.storage.local.get('me', (result) => {
-            if (result.me) {
-                chrome.tabs.create({ url: chrome.runtime.getURL("json_viewer_me.html") });
-            } else {
-                console.error("Pas de données JSON disponibles.");
-            }
-        });
-    } else if (info.menuItemId === "showJsonTab_holdings") {
+    if (info.menuItemId === "showJsonTab_holdings") {
         chrome.storage.local.get('holdings', (result) => {
             if (result.holdings) {
                 chrome.tabs.create({ url: chrome.runtime.getURL("json_viewer_holdings.html") });
@@ -40,17 +34,85 @@ export async function handleMenuClick(info, tab) {
                 }
             });
         });
-    } else if (info.menuItemId === "addRealEstate") {
-        chrome.tabs.sendMessage(tab.id, { action: "openRealEstateForm" });
-    } else if (info.menuItemId === "showDisplayCurrencyCode") {
-        const userData = await apiRequest("/users/me", "GET", token);
-        if (userData) {
-            chrome.notifications.create({
-                type: "basic",
-                iconUrl: "extension_icon128.png",
-                title: "Devise Configurée",
-                message: `Devise actuelle : ${userData.result.ui_configuration.display_currency.code}`
+    } else if (info.menuItemId === "setRealTToken") {
+        chrome.windows.create({
+            url: chrome.runtime.getURL("token-input.html"),
+            type: "popup",
+            width: 500,
+            height: 300
+        });
+    } else if (info.menuItemId === "syncRealTokenFinary") {
+        try {
+            const { realTwalletAddresses } = await new Promise((resolve) => {
+                chrome.storage.local.get('realTwalletAddresses', resolve);
             });
+            if (!realTwalletAddresses || !Array.isArray(realTwalletAddresses) || realTwalletAddresses.length === 0) {
+                console.error("Aucune adresse RealT à synchroniser trouvée dans le stockage local.");
+                return;
+            }
+            // #ToDo: Pour le moment traitement que d'une seule adresse -- à étendre pour plusieurs adresses
+            const walletAddress = realTwalletAddresses[0];
+            const realtSync = new RealTSync();
+            const finaryClient = new FinaryClient();
+
+            // Trouver l'onglet actif
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                if (tabs.length === 0) {
+                    console.error("Aucun onglet actif trouvé.");
+                    return;
+                }
+                const tabId = tabs[0].id;
+                // Injecter modal-progress.js dans l'onglet actif
+                chrome.scripting.executeScript({
+                    target: { tabId },
+                    files: ["modal-progress.js"]
+                }, async () => {
+                    // Lancer la synchronisation et envoyer la progression à l'onglet
+                    await realtSync.syncWalletWithFinary(walletAddress, finaryClient, (step, details) => {
+                        chrome.tabs.sendMessage(tabId, {
+                            type: "progress-modal",
+                            data: {
+                                title: "Synchronisation RealT",
+                                status: details.message || details.status || step,
+                                progress: details.progress,
+                                log: details.log || details.tokenName || step
+                            }
+                        });
+                    });
+                });
+            });
+        } catch (error) {
+            console.error('Sync error:', error);
+        }
+    } else if (info.menuItemId === "deleteAllRealTokenFinary") {
+        try {
+            const realtSync = new RealTSync();
+            const finaryClient = new FinaryClient();
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                if (tabs.length === 0) {
+                    console.error("Aucun onglet actif trouvé.");
+                    return;
+                }
+                const tabId = tabs[0].id;
+                chrome.scripting.executeScript({
+                    target: { tabId },
+                    files: ["modal-progress.js"]
+                }, async () => {
+                    await realtSync.deleteAllFinaryRealTTokens(finaryClient, (step, details) => {
+                        chrome.tabs.sendMessage(tabId, {
+                            type: "progress-modal",
+                            data: {
+                                title: "Suppression des assets RealT",
+                                status: details.message || details.status || step,
+                                progress: details.progress,
+                                log: details.log || details.tokenName || step
+                            }
+                        });
+                    });
+                });
+            });
+        } catch (error) {
+            console.error('Delete error:', error);
         }
     }
 }
