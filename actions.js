@@ -43,7 +43,15 @@ export async function handleMenuClick(info, tab) {
         });
     } else if (info.menuItemId === "syncRealTokenFinary") {
         try {
-            const walletAddress = "0x10df7dd932e655c01cc7a35ec23711b1d4153882";
+            const { realTwalletAddresses } = await new Promise((resolve) => {
+                chrome.storage.local.get('realTwalletAddresses', resolve);
+            });
+            if (!realTwalletAddresses || !Array.isArray(realTwalletAddresses) || realTwalletAddresses.length === 0) {
+                console.error("Aucune adresse RealT à synchroniser trouvée dans le stockage local.");
+                return;
+            }
+            // #ToDo: Pour le moment traitement que d'une seule adresse -- à étendre pour plusieurs adresses
+            const walletAddress = realTwalletAddresses[0];
             const realtSync = new RealTSync();
             const finaryClient = new FinaryClient();
 

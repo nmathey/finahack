@@ -64,7 +64,6 @@ export class RealTSync {
         };
         
         try {
-            injectProgressModal();
             if (progressCallback) progressCallback("state", { message: "Préparation de la synchronisation..." });
             const membershipId = await finaryClient.getSelectedMembershipId();
             if (!membershipId) {
@@ -78,7 +77,7 @@ export class RealTSync {
             initialCurrency = await this.handleDisplayCurrency(finaryClient, 'USD');
             console.log('Currency handling completed. Initial currency:', initialCurrency);
             if (progressCallback) progressCallback("state", { message: "Comparaison des tokens..." });
-            // Process each wallet in parallel using Promise.all
+            
             const walletComparisonResults = await Promise.all(
                 addresses.map(address => this.compareWalletAndFinaryTokens(address))
             );
@@ -92,18 +91,19 @@ export class RealTSync {
             
             if (progressCallback) progressCallback("state", { message: `Mises à jour: ${combined.toUpdate.length}, suppressions: ${combined.toDelete.length}, ajouts: ${combined.toAdd.length}` });
             console.log(`Found ${combined.toUpdate.length} tokens to update, ${combined.toDelete.length} to delete, ${combined.toAdd.length} to add`);
-    
+
+            // Updates
             console.log('\n--- Starting Updates ---');
             await Promise.all(combined.toUpdate.map(async (item, idx) => {
                 try {
                     const progress = Math.round(100 * (idx + 1) / (combined.toUpdate.length || 1));
-                    updateProgressModal({
-                        title: "Synchronisation RealT",
-                        status: `Mise à jour de ${item.wallet.tokenName} (${idx + 1}/${combined.toUpdate.length})`,
+                    if (progressCallback) progressCallback("update", {
+                        tokenName: item.wallet.tokenName,
+                        current: idx + 1,
+                        total: combined.toUpdate.length,
                         progress,
                         log: `Mise à jour de ${item.wallet.tokenName}`
                     });
-                    if (progressCallback) progressCallback("update", { tokenName: item.wallet.tokenName });
                     console.log(`\nUpdating token: ${item.wallet.tokenName} (${item.wallet.contractAddress})`);
                     console.log('Current values:', {
                         balance: item.wallet.balance,
@@ -129,19 +129,20 @@ export class RealTSync {
                     });
                 }
             }));
-    
+
+            // Deletions
             console.log('\n--- Starting Deletions ---');
             for (let idx = 0; idx < combined.toDelete.length; idx++) {
                 const token = combined.toDelete[idx];
                 try {
                     const progress = Math.round(100 * (idx + 1) / (combined.toDelete.length || 1));
-                    updateProgressModal({
-                        title: "Synchronisation RealT",
-                        status: `Suppression de ${token.description} (${idx + 1}/${combined.toDelete.length})`,
+                    if (progressCallback) progressCallback("delete", {
+                        tokenName: token.description,
+                        current: idx + 1,
+                        total: combined.toDelete.length,
                         progress,
                         log: `Suppression de ${token.description}`
                     });
-                    if (progressCallback) progressCallback("delete", { tokenName: token.description });
                     console.log(`\nDeleting token: ${token.description}`);
                     await this.retryApiCall(async () => {
                         await finaryClient.deleteRealEstateAsset(token.id);
@@ -158,20 +159,21 @@ export class RealTSync {
                     });
                 }
             }
-    
+
+            // Additions
             console.log('\n--- Starting Additions ---');
             for (let idx = 0; idx < combined.toAdd.length; idx++) {
                 const token = combined.toAdd[idx];
                 if (combined.toAdd.length > 0) {
                     try {
                         const progress = Math.round(100 * (idx + 1) / (combined.toAdd.length || 1));
-                        updateProgressModal({
-                            title: "Synchronisation RealT",
-                            status: `Ajout de ${token.tokenName} (${idx + 1}/${combined.toAdd.length})`,
+                        if (progressCallback) progressCallback("add", {
+                            tokenName: token.tokenName,
+                            current: idx + 1,
+                            total: combined.toAdd.length,
                             progress,
                             log: `Ajout de ${token.tokenName}`
                         });
-                        if (progressCallback) progressCallback("add", { tokenName: token.tokenName });
                         console.log(`\nAdding token: ${token.tokenName} (${token.contractAddress})`);
                         
                         await this.validateTokenDetails(token);
@@ -257,15 +259,13 @@ export class RealTSync {
                 }
             }
 
-            updateProgressModal({
-                title: "Synchronisation RealT",
-                status: "Synchronisation terminée.",
+            if (progressCallback) progressCallback("state", {
+                message: "Synchronisation terminée.",
                 progress: 100,
                 log: "Synchronisation terminée."
             });
 
             if (progressCallback) progressCallback("state", { message: "Restauration de la devise initiale..." });
-            // #ToDo: restaurer la devise initiale dynamiquement si elle a été modifiée 
             if (initialCurrency !== 'USD') {
                 console.log(`\nRestoring display currency to ${initialCurrency}`);
                 await this.handleDisplayCurrency(finaryClient, initialCurrency);
@@ -285,15 +285,12 @@ export class RealTSync {
             };
 
         } catch (error) {
-            updateProgressModal({
-                title: "Synchronisation RealT",
-                status: `Erreur: ${error.message}`,
+            if (progressCallback) progressCallback("state", {
+                message: `Erreur: ${error.message}`,
                 log: `Erreur: ${error.message}`
             });
-            if (progressCallback) progressCallback("state", { message: `Erreur: ${error.message}` });
             console.error('\n❌ Sync error:', error);
             
-            // #ToDo: restaurer la devise initiale dynamiquement si elle a été modifiée
             if (initialCurrency && initialCurrency !== 'USD') {
                 try {
                     console.log(`\nAttempting to restore currency to ${initialCurrency}`);
@@ -665,13 +662,19 @@ export class RealTSync {
      * @throws {Error} Si des champs sont manquants.
      */
     async validateTokenDetails(token) {
+        // Set defaults if missing
+        if (!token.realTDetails.propertyTaxes) {
+            token.realTDetails.propertyTaxes = 1;
+        }
+        if (!token.realTDetails.propertyMaintenanceMonthly) {
+            token.realTDetails.propertyMaintenanceMonthly = 1;
+        }
+
         const required = [
             'tokenPrice',
-            'totalTokens',
+            'totalTokens', 
             'squareFeet',
-            'propertyMaintenanceMonthly',
-            'netRentMonth',
-            'propertyTaxes'
+            'netRentMonth'
         ];
 
         const missing = required.filter(field => 

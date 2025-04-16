@@ -1,11 +1,22 @@
+/**
+ * Classe client pour interagir avec l'API Finary.
+ * Gère l'authentification, les requêtes API, la gestion des biens immobiliers, et la configuration utilisateur.
+ */
 export class FinaryClient {
+    /**
+     * Initialise le client Finary.
+     */
     constructor() {
         this.token = null;
         this.baseUrl = 'https://api.finary.com';
         this.MAX_RETRIES = 3;
-        this.RETRY_DELAY = 2000; // 2 seconds
+        this.RETRY_DELAY = 2000;
     }
 
+    /**
+     * Récupère le token de session stocké localement.
+     * @returns {Promise<string|null>} Le token de session ou null.
+     */
     async getSessionToken() {
         return new Promise((resolve) => {
             chrome.storage.local.get('sessionToken', (result) => {
@@ -14,12 +25,22 @@ export class FinaryClient {
         });
     }
 
+    /**
+     * Enregistre le token de session dans le stockage local.
+     * @param {string} token - Le token à enregistrer.
+     * @returns {Promise<void>}
+     */
     async setSessionToken(token) {
         return new Promise((resolve) => {
             chrome.storage.local.set({ sessionToken: token }, resolve);
         });
     }
 
+    /**
+     * Demande un nouveau token de session, avec gestion du retry.
+     * @param {number} [retryCount=0] - Nombre de tentatives déjà effectuées.
+     * @returns {Promise<string>} Le nouveau token de session.
+     */
     async requestNewToken(retryCount = 0) {
         console.log(`🔄 Tentative ${retryCount + 1}/${this.MAX_RETRIES + 1} de renouvellement du token...`);
 
@@ -90,12 +111,21 @@ export class FinaryClient {
         });
     }
 
-    // Fonction utilitaire pour attendre un délai
+    /**
+     * Attend un délai donné (en ms).
+     * @param {number} ms - Durée en millisecondes.
+     * @returns {Promise<void>}
+     */
     async delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    // Fonction générique pour effectuer une requête API avec gestion des erreurs et du token expiré
+    /**
+     * Effectue une requête API générique avec gestion du token et des erreurs.
+     * @param {string} endpoint - L'endpoint de l'API (ex: "/users/me").
+     * @param {Object} [options={}] - Options fetch (méthode, headers, body...).
+     * @returns {Promise<any>} La réponse de l'API ou null en cas d'erreur.
+     */
     async apiRequest(endpoint, options = {}) {
         let retryCount = 0;
 
@@ -136,23 +166,21 @@ export class FinaryClient {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                // Handle empty responses (particularly for DELETE operations)
                 const contentType = response.headers.get("content-type");
                 if (contentType && contentType.includes("application/json")) {
-                    const text = await response.text(); // Get response as text first
+                    const text = await response.text();
                     if (!text) {
                         console.log("⚠️ Empty response received");
                         return null;
                     }
                     try {
-                        return JSON.parse(text); // Parse the text as JSON
+                        return JSON.parse(text);
                     } catch (e) {
                         console.error("❌ JSON parse error:", e);
                         throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
                     }
                 }
                 
-                // For non-JSON responses (like DELETE operations)
                 return { success: response.ok };
 
             } catch (error) {
@@ -179,7 +207,10 @@ export class FinaryClient {
         }
     }
 
-    // Add specific API methods
+    /**
+     * Récupère l'ID du membership sélectionné pour l'utilisateur courant.
+     * @returns {Promise<string|null>} L'ID du membership ou null.
+     */
     async getSelectedMembershipId() {
         try {
             const response = await this.apiRequest("/users/me");
@@ -194,6 +225,12 @@ export class FinaryClient {
         }
     }
 
+    /**
+     * Met à jour la devise d'affichage de l'utilisateur.
+     * @param {string} currencyCode - Code de la devise (ex: "USD").
+     * @returns {Promise<Object>} La réponse de l'API.
+     * @throws {Error} Si la mise à jour échoue.
+     */
     async updateDisplayCurrency(currencyCode) {
         const response = await this.apiRequest("/users/me", {
             method: "PATCH",
@@ -219,6 +256,11 @@ export class FinaryClient {
         return response;
     }
 
+    /**
+     * Récupère le place_id Finary correspondant à une adresse.
+     * @param {string} address - L'adresse à rechercher.
+     * @returns {Promise<string|null>} Le place_id ou null si non trouvé.
+     */
     async getPlaceId(address) {
         const encodedAddress = encodeURIComponent(address);
         const response = await this.apiRequest(`/real_estates/autocomplete?query=${encodedAddress}`);
@@ -232,10 +274,19 @@ export class FinaryClient {
         return response.result[0].place_id;
     }
 
+    /**
+     * Récupère la liste des biens immobiliers de l'utilisateur.
+     * @returns {Promise<Object>} Liste des biens immobiliers.
+     */
     async getRealEstateAssets() {
         return await this.apiRequest('/users/me/real_estates');
     }
 
+    /**
+     * Ajoute un bien immobilier à l'utilisateur.
+     * @param {Object} data - Données du bien immobilier à ajouter.
+     * @returns {Promise<Object>} La réponse de l'API.
+     */
     async addRealEstateAsset(data) {
         return await this.apiRequest('/users/me/real_estates', {
             method: 'POST',
@@ -243,6 +294,12 @@ export class FinaryClient {
         });
     }
 
+    /**
+     * Met à jour un bien immobilier existant.
+     * @param {string} id - L'identifiant du bien à mettre à jour.
+     * @param {Object} data - Les nouvelles données du bien.
+     * @returns {Promise<Object>} La réponse de l'API.
+     */
     async updateRealEstateAsset(id, data) {
         return await this.apiRequest(`/users/me/real_estates/${id}`, {
             method: 'PUT',
@@ -250,6 +307,11 @@ export class FinaryClient {
         });
     }
 
+    /**
+     * Supprime un bien immobilier existant.
+     * @param {string} id - L'identifiant du bien à supprimer.
+     * @returns {Promise<Object>} La réponse de l'API.
+     */
     async deleteRealEstateAsset(id) {
         return await this.apiRequest(`/users/me/real_estates/${id}`, {
             method: 'DELETE'
