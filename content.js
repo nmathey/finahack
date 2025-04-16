@@ -32,6 +32,16 @@ function setupEventListeners() {
   
   // Listen for messages from extension
   chrome.runtime.onMessage.addListener(handleRuntimeMessages);
+  
+  // Listen for progress modal messages
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === "progress-modal") {
+        if (typeof window.injectProgressModal === "function" && typeof window.updateProgressModal === "function") {
+            window.injectProgressModal();
+            window.updateProgressModal(msg.data);
+        }
+    }
+  });
 }
 
 // Handle messages from the injected script

@@ -45,6 +45,7 @@ export class RealTSync {
         };
         
         try {
+            injectProgressModal();
             if (progressCallback) progressCallback("state", { message: "Préparation de la synchronisation..." });
             // Get membership ID using finaryClient
             const membershipId = await finaryClient.getSelectedMembershipId();
@@ -78,8 +79,15 @@ export class RealTSync {
     
             // Process updates
             console.log('\n--- Starting Updates ---');
-            await Promise.all(combined.toUpdate.map(async (item) => {
+            await Promise.all(combined.toUpdate.map(async (item, idx) => {
                 try {
+                    const progress = Math.round(100 * (idx + 1) / (combined.toUpdate.length || 1));
+                    updateProgressModal({
+                        title: "Synchronisation RealT",
+                        status: `Mise à jour de ${item.wallet.tokenName} (${idx + 1}/${combined.toUpdate.length})`,
+                        progress,
+                        log: `Mise à jour de ${item.wallet.tokenName}`
+                    });
                     if (progressCallback) progressCallback("update", { tokenName: item.wallet.tokenName });
                     console.log(`\nUpdating token: ${item.wallet.tokenName} (${item.wallet.contractAddress})`);
                     console.log('Current values:', {
@@ -109,8 +117,16 @@ export class RealTSync {
     
             // Process deletions sequentially to avoid rate limiting
             console.log('\n--- Starting Deletions ---');
-            for (const token of combined.toDelete) {
+            for (let idx = 0; idx < combined.toDelete.length; idx++) {
+                const token = combined.toDelete[idx];
                 try {
+                    const progress = Math.round(100 * (idx + 1) / (combined.toDelete.length || 1));
+                    updateProgressModal({
+                        title: "Synchronisation RealT",
+                        status: `Suppression de ${token.description} (${idx + 1}/${combined.toDelete.length})`,
+                        progress,
+                        log: `Suppression de ${token.description}`
+                    });
                     if (progressCallback) progressCallback("delete", { tokenName: token.description });
                     console.log(`\nDeleting token: ${token.description}`);
                     await this.retryApiCall(async () => {
@@ -131,9 +147,17 @@ export class RealTSync {
     
             // Process additions sequentially to avoid rate limiting
             console.log('\n--- Starting Additions ---');
-            for (const token of combined.toAdd) {
+            for (let idx = 0; idx < combined.toAdd.length; idx++) {
+                const token = combined.toAdd[idx];
                 if (combined.toAdd.length > 0) {
                     try {
+                        const progress = Math.round(100 * (idx + 1) / (combined.toAdd.length || 1));
+                        updateProgressModal({
+                            title: "Synchronisation RealT",
+                            status: `Ajout de ${token.tokenName} (${idx + 1}/${combined.toAdd.length})`,
+                            progress,
+                            log: `Ajout de ${token.tokenName}`
+                        });
                         if (progressCallback) progressCallback("add", { tokenName: token.tokenName });
                         console.log(`\nAdding token: ${token.tokenName} (${token.contractAddress})`);
                         
@@ -220,6 +244,13 @@ export class RealTSync {
                 }
             }
 
+            updateProgressModal({
+                title: "Synchronisation RealT",
+                status: "Synchronisation terminée.",
+                progress: 100,
+                log: "Synchronisation terminée."
+            });
+
             if (progressCallback) progressCallback("state", { message: "Restauration de la devise initiale..." });
             // Restore initial currency if different
             if (initialCurrency !== 'USD') {
@@ -241,6 +272,11 @@ export class RealTSync {
             };
 
         } catch (error) {
+            updateProgressModal({
+                title: "Synchronisation RealT",
+                status: `Erreur: ${error.message}`,
+                log: `Erreur: ${error.message}`
+            });
             if (progressCallback) progressCallback("state", { message: `Erreur: ${error.message}` });
             console.error('\n❌ Sync error:', error);
             
@@ -609,7 +645,7 @@ export class RealTSync {
         const BETWEEN_CALLS_DELAY = 1000; // Délai entre chaque appel API
     
         try {
-            if (progressCallback) progressCallback("state", { message: "Préparation de la suppression..." });
+            if (progressCallback) progressCallback("state", { message: "Préparation de la suppression...", progress: 0, log: "Préparation de la suppression..." });
             // Get properties with retry
             const finaryTokens = await this.retryApiCall(async () => {
                 const properties = await this.getFinaryRealTProperties();
@@ -629,10 +665,13 @@ export class RealTSync {
             for (let i = 0; i < finaryTokens.length; i++) {
                 const token = finaryTokens[i];
                 try {
+                    const progress = Math.round(100 * (i + 1) / (finaryTokens.length || 1));
                     if (progressCallback) progressCallback("delete", {
                         tokenName: token.description,
                         current: i + 1,
-                        total: finaryTokens.length
+                        total: finaryTokens.length,
+                        progress,
+                        log: `Suppression de ${token.description}`
                     });
                     await this.retryApiCall(async () => {
                         console.log(`🗑️ Deleting token: ${token.description}`);
@@ -651,7 +690,7 @@ export class RealTSync {
                 }
             }
     
-            if (progressCallback) progressCallback("state", { message: "Suppression terminée." });
+            if (progressCallback) progressCallback("state", { message: "Suppression terminée.", progress: 100, log: "Suppression terminée." });
             const summary = {
                 success: true,
                 totalTokens: finaryTokens.length,
@@ -663,7 +702,7 @@ export class RealTSync {
             return summary;
     
         } catch (error) {
-            if (progressCallback) progressCallback("state", { message: `Erreur: ${error.message}` });
+            if (progressCallback) progressCallback("state", { message: `Erreur: ${error.message}`, log: `Erreur: ${error.message}` });
             console.error('❌ Fatal error during deletion:', error);
             return {
                 success: false,
