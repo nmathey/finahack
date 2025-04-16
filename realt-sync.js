@@ -1,12 +1,27 @@
 import { FinaryClient } from "./api.js";
 
+/**
+ * Classe permettant de synchroniser les tokens RealT avec Finary.
+ * Fournit des méthodes pour récupérer, comparer, ajouter, mettre à jour et supprimer des tokens RealT,
+ * ainsi que pour gérer la devise d'affichage et le cache local.
+ */
 export class RealTSync {
+    /**
+     * @param {string} [realtApiToken] - Token d'accès à l'API RealT (optionnel, sinon récupéré depuis le storage).
+     */
     constructor(realtApiToken) {
         this.realtApiToken = realtApiToken;
         this.realtApiUrl = 'https://api.realtoken.community/v1';
     }
 
-    // Helper function for retrying API calls
+    /**
+     * Tente d'exécuter une fonction asynchrone avec des tentatives de retry en cas d'échec.
+     * @param {Function} fn - Fonction asynchrone à exécuter.
+     * @param {number} [maxRetries=3] - Nombre maximal de tentatives.
+     * @param {number} [retryDelay=2000] - Délai entre chaque tentative (en ms).
+     * @param {number} [retryCount=0] - Compteur de tentatives (interne).
+     * @returns {Promise<any>} Résultat de la fonction asynchrone.
+     */
     async retryApiCall(fn, maxRetries = 3, retryDelay = 2000, retryCount = 0) {
         try {
             return await fn();
@@ -23,7 +38,11 @@ export class RealTSync {
         }
     }
 
-    // Normalize contract addresses to lowercase for consistency
+    /**
+     * Normalise une adresse de contrat (minuscule).
+     * @param {string} address - Adresse à normaliser.
+     * @returns {string|null} Adresse normalisée ou null.
+     */
     normalizeAddress(address) {
         return address ? address.toLowerCase() : null;
     }
@@ -294,6 +313,10 @@ export class RealTSync {
         }
     }
 
+    /**
+     * Récupère tous les tokens RealT disponibles via l'API RealT (avec cache local).
+     * @returns {Promise<Object[]>} Liste des tokens RealT.
+     */
     async getAllRealTTokens() {
         try {
             // Check cached data
@@ -308,8 +331,8 @@ export class RealTSync {
     
             // Check if cache is valid (less than 7 days old)
             const now = Date.now();
-            const CACHE_DURATION = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds - Temporary for testing
-            // const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+            //const CACHE_DURATION = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds - Temporary for testing
+            const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
             
             if (cachedData.tokens && cachedData.timestamp && 
                 (now - cachedData.timestamp) < CACHE_DURATION) {
@@ -362,6 +385,10 @@ export class RealTSync {
         }
     }
 
+    /**
+     * Récupère les propriétés RealT présentes dans Finary.
+     * @returns {Promise<Object[]>} Liste des propriétés RealT dans Finary.
+     */
     async getFinaryRealTProperties() {
         try {
             const finaryClient = new FinaryClient();
@@ -434,6 +461,11 @@ export class RealTSync {
         }
     }
 
+    /**
+     * Récupère les tokens RealT détenus par un wallet donné.
+     * @param {string} walletAddress - Adresse du wallet.
+     * @returns {Promise<Object[]>} Liste des tokens RealT du wallet.
+     */
     async getWalletRealTTokens(walletAddress) {
         try {
             const allRealTTokens = await this.getAllRealTTokens();
@@ -496,6 +528,11 @@ export class RealTSync {
         }
     }
 
+    /**
+     * Récupère uniquement les tokens RealT de type "real_estate_rental" pour un wallet.
+     * @param {string} walletAddress - Adresse du wallet.
+     * @returns {Promise<Object[]>} Liste filtrée des tokens RealT immobiliers.
+     */
     async getWalletRealTTokens_realestate(walletAddress) {
         try {
             const allTokens = await this.getWalletRealTTokens(walletAddress);
@@ -508,6 +545,11 @@ export class RealTSync {
         }
     }
 
+    /**
+     * Compare les tokens d'un wallet et ceux présents dans Finary.
+     * @param {string} walletAddress - Adresse du wallet.
+     * @returns {Promise<Object>} Objets à mettre à jour, supprimer ou ajouter.
+     */
     async compareWalletAndFinaryTokens(walletAddress) {
         try {
             // Fetch wallet tokens and Finary tokens in parallel
@@ -532,6 +574,12 @@ export class RealTSync {
         }
     }
     
+    /**
+     * Détermine les tokens à mettre à jour, supprimer ou ajouter.
+     * @param {Object[]} walletTokens - Tokens du wallet.
+     * @param {Object[]} finaryTokens - Tokens dans Finary.
+     * @returns {Object} Objets à mettre à jour, supprimer ou ajouter.
+     */
     findTokensToUpdate(walletTokens, finaryTokens) {
         const toUpdate = [];
         const toDelete = [];
@@ -577,6 +625,12 @@ export class RealTSync {
         return { toUpdate, toDelete, toAdd };
     }
     
+    /**
+     * Gère la devise d'affichage sur Finary (change temporairement si besoin).
+     * @param {FinaryClient} finaryClient - Instance du client Finary.
+     * @param {string} requiredCurrency - Devise requise (ex: 'USD').
+     * @returns {Promise<string>} Devise initiale.
+     */
     async handleDisplayCurrency(finaryClient, requiredCurrency) {
         try {
             // Get current display currency
@@ -597,6 +651,11 @@ export class RealTSync {
         }
     }
 
+    /**
+     * Retourne le type de bâtiment Finary à partir du type RealT.
+     * @param {number} realT_propertyType - Type de propriété RealT.
+     * @returns {string} Type de bâtiment Finary.
+     */
     async get_building_type(realT_propertyType) {
         // building type: house, building, apartment, land, commercial, parking_box, or other
         // propertyType from RealT -> 1 = Single Family | 2 = Multi Family | 3 = Duplex | 4 = Condominium 
@@ -621,7 +680,11 @@ export class RealTSync {
         return building_type;
     }
 
-    // Add validation helper method
+    /**
+     * Valide la présence des champs obligatoires dans les détails d'un token.
+     * @param {Object} token - Token à valider.
+     * @throws {Error} Si des champs sont manquants.
+     */
     async validateTokenDetails(token) {
         const required = [
             'tokenPrice',
@@ -641,6 +704,12 @@ export class RealTSync {
         }
     }
     
+    /**
+     * Supprime tous les tokens RealT présents dans Finary.
+     * @param {FinaryClient} finaryClient - Instance du client Finary.
+     * @param {function} [progressCallback] - Callback appelé à chaque suppression.
+     * @returns {Promise<Object>} Résumé de la suppression.
+     */
     async deleteAllFinaryRealTTokens(finaryClient, progressCallback) {
         const BETWEEN_CALLS_DELAY = 1000; // Délai entre chaque appel API
     
