@@ -5,10 +5,10 @@
 # FinaHack
 
 ## Introduction
-FinaHack est une extension pour l'application de gestion de patrimoine Finary. Elle permet d'ajouter des fonctionnalités supplémentaires non disponibles dans l'application officielle.
+FinaHack est une extension pour l'application (version web) de gestion de patrimoine Finary. Elle permet d'ajouter des fonctionnalités supplémentaires non disponibles dans l'application officielle.
 
 ## Motivation
-Finary est l'application de gestion de patrimoine par excellence offrant une version mobile et web. Malgré des efforts afin d'être à l'écoute de sa communauté (https://community.finary.com) et la disponibilité historique de leur API (grâce au travail de https://github.com/lasconic/finary_uapi), cette API n'est plus accessible suite à un changement de gestion d'accès/authentification.
+Finary est l'application de gestion de patrimoine par excellence offrant une version mobile et web. Malgré des efforts afin d'être à l'écoute de sa communauté (https://community.finary.com) et la disponibilité historique de leur API (grâce au travail de https://github.com/lasconic/finary_uapi), celle-ci n'est plus vraiment accessible suite à un changement de gestion d'accès/authentification.
 
 Ainsi, plutôt que de demander à l'équipe Finary d'implémenter certaines fonctionnalités, développons les nous-mêmes à travers cette extension sur le même modèle que https://github.com/toolkit-for-ynab/toolkit-for-ynab ;)
 
@@ -25,7 +25,7 @@ Pour le moment, l'extension est compatible avec Chrome et Edge.
 5. Trois boutons devraient apparaître. Cliquez sur 'Charger l'extension non empaquetée...', puis choisissez le dossier contenant les codes sources et le précieux manifest.json.
 
 ## Feuille de route / To Do List
-- [ ] Fonctionnalité de synchronisation de son portefeuille RealT pour les biens immobiliers ❤️
+- [X] Fonctionnalité de synchronisation de son portefeuille RealT pour les biens immobiliers ❤️
 - Vos idées via une issue ;)
 
 ## Contributions!
