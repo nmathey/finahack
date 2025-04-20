@@ -32,4 +32,10 @@ Pour le moment, l'extension est compatible avec Chrome et Edge.
 Les contributions sont les bienvenues ! Issues, PR, Documentation, tout est à prendre :)
 
 ## 💌 Vous souhaitez me soutenir?
-C'est un projet personnel avec lequel je m'amuse pendant mon temps libre. Si vous l'avez trouvé utile et que vous souhaitez soutenir mon travail, vous pouvez transférer tous les token ou coin ERC20 sur Ethereum, Gnosis ou Polygon à l'adresse suivante : 0xEFf0d54e391C6097CdF24A3Fc450988Ebd9a91F7
+C'est un projet personnel avec lequel je m'amuse pendant mon temps libre. Si vous l'avez trouvé utile et que vous souhaitez soutenir mon travail, vous pouvez:
+- transférer tous les token ou coin ERC20 sur Ethereum, Gnosis ou Polygon à l'adresse suivante : 0xEFf0d54e391C6097CdF24A3Fc450988Ebd9a91F7
+- utiliser un de mes liens d'affiliation:
+  - RealT (Real World Asset Tokenization)  https://realt.co/ref/nmathey/
+  - MtPelerin (On/Off Ramp crypto aux meilleurs prix) http://mtpelerin.com/fr/join?rfr=P9KPdkL6
+ 
+    
