@@ -25,7 +25,8 @@
   "host_permissions": [
     "*://*.finary.com/*",
     "https://api.realtoken.community/*",
-    "https://blockscout.com/*"
+    "https://blockscout.com/*",
+    "https://api.vfhome.fr/*"
   ],
   "content_scripts": [
     {
