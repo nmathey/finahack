@@ -107,15 +107,20 @@ export class RealTSync {
                     console.log(`\nUpdating token: ${item.wallet.tokenName} (${item.wallet.contractAddress})`);
                     console.log('Current values:', {
                         balance: item.wallet.balance,
-                        value: item.wallet.realTDetails.netAssetValue * item.wallet.balance
+                        value: item.wallet.realTDetails.tokenPrice * item.wallet.balance
                     });
                     
                     await finaryClient.updateRealEstateAsset({
                         id: item.finary.id,
+                        category: "rent",
                         name: item.wallet.tokenName,
-                        value: item.wallet.realTDetails.netAssetValue * item.wallet.balance,
-                        quantity: item.wallet.balance,
-                        currency: 'USD',
+                        user_estimated_value: item.wallet.realTDetails.tokenPrice * item.wallet.balance,
+                        //quantity: item.wallet.balance,
+                        //currency: 'USD',
+                        ownership_repartition: [{
+                            share: parseFloat((item.wallet.balance / item.wallet.realTDetails.totalTokens)).toFixed(4),
+                            membership_id: membershipId
+                            }],
                         description: `RealT - ${item.wallet.tokenName} (${item.wallet.contractAddress})`
                     });
                     processedTokens.updates++;
@@ -460,42 +465,78 @@ export class RealTSync {
                 .filter(token => token?.uuid)
                 .map(token => token.uuid);
 
-            const response = await fetch(
-                `https://blockscout.com/xdai/mainnet/api?module=account&action=tokenlist&address=${walletAddress}`
-            );
-            
-            if (!response.ok) {
-                throw new Error(`Erreur Blockscout API: ${response.status}`);
-            }
+            // --- CACHE LOGIC START ---
+            const cacheKey = `vfhome_wallet_tokens_${walletAddress}`;
+            const cacheTimestampKey = `${cacheKey}_timestamp`;
+            const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24h in ms
 
-            const data = await response.json();
-            
+            const cached = await new Promise(resolve => {
+                chrome.storage.local.get([cacheKey, cacheTimestampKey], result => {
+                    resolve({
+                        data: result[cacheKey],
+                        timestamp: result[cacheTimestampKey]
+                    });
+                });
+            });
+
+            const now = Date.now();
+            let data;
+
+            if (
+                cached.data &&
+                cached.timestamp &&
+                (now - cached.timestamp) < CACHE_DURATION
+            ) {
+                data = cached.data;
+            } else {
+                const response = await fetch(
+                    `https://api.vfhome.fr/wallet_tokens/${walletAddress}`
+                );
+
+                if (!response.ok) {
+                    throw new Error(`Erreur API vfhome.fr: ${response.status}`);
+                }
+
+                data = await response.json();
+
+                await new Promise(resolve => {
+                    chrome.storage.local.set(
+                        {
+                            [cacheKey]: data,
+                            [cacheTimestampKey]: now
+                        },
+                        resolve
+                    );
+                });
+            }
+            // --- CACHE LOGIC END ---
+
             const tokensMap = new Map();
-            
-            for (const tx of data.result) {
-                if (!tx?.contractAddress) continue;
-                
-                const contractAddress = this.normalizeAddress(tx.contractAddress);
-                
+
+            for (const tx of data) {
+                if (!tx?.token_normalized) continue;
+
+                const contractAddress = this.normalizeAddress(tx.token_normalized);
+
                 if (realTContractAddresses.includes(contractAddress)) {
                     const realTDetails = allRealTTokens.find(t => t.uuid === contractAddress);
-                    
+
                     if (!tokensMap.has(contractAddress)) {
-                        const balance = tx.balance 
-                            ? parseFloat(tx.balance) / Math.pow(10, parseInt(tx.decimals || tx.tokenDecimal))
-                            : 0;
-                        
+                        const balance = typeof tx.amount === "number"
+                            ? tx.amount
+                            : parseFloat(tx.amount);
+
                         tokensMap.set(contractAddress, {
                             contractAddress,
-                            tokenName: tx.name || '',
-                            tokenSymbol: tx.symbol || '',
+                            tokenName: realTDetails?.fullName || '',
+                            tokenSymbol: realTDetails?.symbol || '',
                             balance: balance,
                             realTDetails
                         });
                     }
                 }
             }
-            
+
             return Array.from(tokensMap.values())
                 .filter(token => token.balance > 0)
                 .map(token => ({
