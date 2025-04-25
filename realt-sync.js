@@ -460,15 +460,51 @@ export class RealTSync {
                 .filter(token => token?.uuid)
                 .map(token => token.uuid);
 
-            const response = await fetch(
-                `https://api.vfhome.fr/wallet_tokens/${walletAddress}`
-            );
+            // --- CACHE LOGIC START ---
+            const cacheKey = `vfhome_wallet_tokens_${walletAddress}`;
+            const cacheTimestampKey = `${cacheKey}_timestamp`;
+            const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24h in ms
 
-            if (!response.ok) {
-                throw new Error(`Erreur API vfhome.fr: ${response.status}`);
+            const cached = await new Promise(resolve => {
+                chrome.storage.local.get([cacheKey, cacheTimestampKey], result => {
+                    resolve({
+                        data: result[cacheKey],
+                        timestamp: result[cacheTimestampKey]
+                    });
+                });
+            });
+
+            const now = Date.now();
+            let data;
+
+            if (
+                cached.data &&
+                cached.timestamp &&
+                (now - cached.timestamp) < CACHE_DURATION
+            ) {
+                data = cached.data;
+            } else {
+                const response = await fetch(
+                    `https://api.vfhome.fr/wallet_tokens/${walletAddress}`
+                );
+
+                if (!response.ok) {
+                    throw new Error(`Erreur API vfhome.fr: ${response.status}`);
+                }
+
+                data = await response.json();
+
+                await new Promise(resolve => {
+                    chrome.storage.local.set(
+                        {
+                            [cacheKey]: data,
+                            [cacheTimestampKey]: now
+                        },
+                        resolve
+                    );
+                });
             }
-
-            const data = await response.json();
+            // --- CACHE LOGIC END ---
 
             const tokensMap = new Map();
 
