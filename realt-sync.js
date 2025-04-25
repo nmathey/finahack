@@ -461,41 +461,41 @@ export class RealTSync {
                 .map(token => token.uuid);
 
             const response = await fetch(
-                `https://blockscout.com/xdai/mainnet/api?module=account&action=tokenlist&address=${walletAddress}`
+                `https://api.vfhome.fr/wallet_tokens/${walletAddress}`
             );
-            
+
             if (!response.ok) {
-                throw new Error(`Erreur Blockscout API: ${response.status}`);
+                throw new Error(`Erreur API vfhome.fr: ${response.status}`);
             }
 
             const data = await response.json();
-            
+
             const tokensMap = new Map();
-            
-            for (const tx of data.result) {
-                if (!tx?.contractAddress) continue;
-                
-                const contractAddress = this.normalizeAddress(tx.contractAddress);
-                
+
+            for (const tx of data) {
+                if (!tx?.token_normalized) continue;
+
+                const contractAddress = this.normalizeAddress(tx.token_normalized);
+
                 if (realTContractAddresses.includes(contractAddress)) {
                     const realTDetails = allRealTTokens.find(t => t.uuid === contractAddress);
-                    
+
                     if (!tokensMap.has(contractAddress)) {
-                        const balance = tx.balance 
-                            ? parseFloat(tx.balance) / Math.pow(10, parseInt(tx.decimals || tx.tokenDecimal))
-                            : 0;
-                        
+                        const balance = typeof tx.amount === "number"
+                            ? tx.amount
+                            : parseFloat(tx.amount);
+
                         tokensMap.set(contractAddress, {
                             contractAddress,
-                            tokenName: tx.name || '',
-                            tokenSymbol: tx.symbol || '',
+                            tokenName: realTDetails?.name || '',
+                            tokenSymbol: realTDetails?.symbol || '',
                             balance: balance,
                             realTDetails
                         });
                     }
                 }
             }
-            
+
             return Array.from(tokensMap.values())
                 .filter(token => token.balance > 0)
                 .map(token => ({
