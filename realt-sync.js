@@ -523,7 +523,7 @@ export class RealTSync {
 
                         tokensMap.set(contractAddress, {
                             contractAddress,
-                            tokenName: realTDetails?.name || '',
+                            tokenName: realTDetails?.fullName || '',
                             tokenSymbol: realTDetails?.symbol || '',
                             balance: balance,
                             realTDetails
