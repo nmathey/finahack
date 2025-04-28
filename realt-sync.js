@@ -141,6 +141,10 @@ export class RealTSync {
                         token: item.wallet.tokenName,
                         error: error.message
                     });
+                    if (progressCallback) progressCallback("state", {
+                        message: `Erreur lors de la mise à jour de ${item.wallet.tokenName}: ${error.message}`,
+                        log: `Erreur lors de la mise à jour de ${item.wallet.tokenName}: ${error.message}`
+                    });
                 }
             }));
 
@@ -170,6 +174,10 @@ export class RealTSync {
                         type: 'delete',
                         token: token.description,
                         error: error.message
+                    });
+                    if (progressCallback) progressCallback("state", {
+                        message: `Erreur lors de la suppression de ${token.description}: ${error.message}`,
+                        log: `Erreur lors de la suppression de ${token.description}: ${error.message}`
                     });
                 }
             }
@@ -277,6 +285,10 @@ export class RealTSync {
                             type: 'add',
                             token: token.tokenName,
                             error: error.message
+                        });
+                        if (progressCallback) progressCallback("state", {
+                            message: `Erreur lors de l'ajout de ${token.tokenName}: ${error.message}`,
+                            log: `Erreur lors de l'ajout de ${token.tokenName}: ${error.message}`
                         });
                     }
                 }
