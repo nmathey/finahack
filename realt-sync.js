@@ -110,19 +110,19 @@ export class RealTSync {
                         value: item.wallet.realTDetails.tokenPrice * item.wallet.balance
                     });
                     
-                    await finaryClient.updateRealEstateAsset({
-                        id: item.finary.id,
-                        category: "rent",
-                        name: item.wallet.tokenName,
-                        user_estimated_value: item.wallet.realTDetails.tokenPrice * item.wallet.balance,
-                        //quantity: item.wallet.balance,
-                        //currency: 'USD',
-                        ownership_repartition: [{
-                            share: parseFloat((item.wallet.balance / item.wallet.realTDetails.totalTokens)).toFixed(4),
-                            membership_id: membershipId
-                            }],
-                        description: `RealT - ${item.wallet.tokenName} (${item.wallet.contractAddress})`
-                    });
+                    await finaryClient.updateRealEstateAsset(
+                        item.finary.id,
+                        {
+                            category: "rent",
+                            name: item.wallet.tokenName,
+                            user_estimated_value: item.wallet.realTDetails.tokenPrice * item.wallet.realTDetails.totalTokens,
+                            ownership_repartition: [{
+                                share: parseFloat((item.wallet.balance / item.wallet.realTDetails.totalTokens)).toFixed(4),
+                                membership_id: membershipId
+                                }],
+                            description: `RealT - ${item.wallet.tokenName} (${item.wallet.contractAddress})`
+                        }
+                    );
                     processedTokens.updates++;
                     console.log('✅ Update successful');
                 } catch (error) {
