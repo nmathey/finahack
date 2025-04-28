@@ -110,14 +110,23 @@ export class RealTSync {
                         value: item.wallet.realTDetails.tokenPrice * item.wallet.balance
                     });
                     
+                    // Gestion des poussières de tokens sur Finary pour cause d'arrondis nécessaires
+                    let finaryCheat = 1;
+                    const calulatedOnwership = item.wallet.balance / item.wallet.realTDetails.totalTokens;
+                    if (calulatedOnwership < 0.00005 && calulatedOnwership >= 0.000005) {
+                        finaryCheat = 0.1;
+                    } else if (calulatedOnwership >= 0.0000005) {
+                        finaryCheat = 0.01;
+                    }  
+
                     await finaryClient.updateRealEstateAsset(
                         item.finary.id,
                         {
                             category: "rent",
                             name: item.wallet.tokenName,
-                            user_estimated_value: item.wallet.realTDetails.tokenPrice * item.wallet.realTDetails.totalTokens,
+                            user_estimated_value: item.wallet.realTDetails.tokenPrice * item.wallet.realTDetails.totalTokens * finaryCheat,
                             ownership_repartition: [{
-                                share: parseFloat((item.wallet.balance / item.wallet.realTDetails.totalTokens)).toFixed(4),
+                                share: parseFloat((item.wallet.balance / (item.wallet.realTDetails.totalTokens * finaryCheat))).toFixed(4),
                                 membership_id: membershipId
                                 }],
                             description: `RealT - ${item.wallet.tokenName} (${item.wallet.contractAddress})`
@@ -131,6 +140,10 @@ export class RealTSync {
                         type: 'update',
                         token: item.wallet.tokenName,
                         error: error.message
+                    });
+                    if (progressCallback) progressCallback("state", {
+                        message: `Erreur lors de la mise à jour de ${item.wallet.tokenName}: ${error.message}`,
+                        log: `Erreur lors de la mise à jour de ${item.wallet.tokenName}: ${error.message}`
                     });
                 }
             }));
@@ -161,6 +174,10 @@ export class RealTSync {
                         type: 'delete',
                         token: token.description,
                         error: error.message
+                    });
+                    if (progressCallback) progressCallback("state", {
+                        message: `Erreur lors de la suppression de ${token.description}: ${error.message}`,
+                        log: `Erreur lors de la suppression de ${token.description}: ${error.message}`
                     });
                 }
             }
@@ -200,7 +217,16 @@ export class RealTSync {
                             propertyType_for_Finary: await this.get_building_type(tokenDetails.propertyType),
                             ownership_percentage: parseFloat((token.balance / tokenDetails.totalTokens)*100).toFixed(4) 
                         });
-                        
+
+                        // Gestion des poussières de tokens sur Finary pour cause d'arrondis nécessaires
+                        let finaryCheat = 1;
+                        const calulatedOnwership = token.balance / tokenDetails.totalTokens;
+                        if (calulatedOnwership < 0.00005 && calulatedOnwership >= 0.000005) {
+                            finaryCheat = 0.1;
+                        } else if (calulatedOnwership >= 0.0000005) {
+                            finaryCheat = 0.01;
+                        }  
+
                         await this.retryApiCall(async () => {
                             await finaryClient.addRealEstateAsset({
                                 is_automated_valuation: false,
@@ -229,23 +255,23 @@ export class RealTSync {
                                 garden_area: "",
                                 category: "rent",
                                 is_estimable: false,
-                                user_estimated_value: (tokenDetails.tokenPrice * tokenDetails.totalTokens),
+                                user_estimated_value: (tokenDetails.tokenPrice * tokenDetails.totalTokens * finaryCheat),
                                 description: `RealT - ${token.tokenName} (${token.contractAddress})`,
-                                surface: tokenDetails.squareFeet * 0.09290304, // Convert sq ft to sq m
+                                surface: tokenDetails.squareFeet * 0.09290304 * finaryCheat, // Convert sq ft to sq m
                                 agency_fees: "",
                                 notary_fees: "",
                                 furnishing_fees: "",
                                 renovation_fees: "",
-                                buying_price: (tokenDetails.tokenPrice * tokenDetails.totalTokens),
+                                buying_price: (tokenDetails.tokenPrice * tokenDetails.totalTokens * finaryCheat),
                                 building_type: await this.get_building_type(tokenDetails.propertyType),
                                 ownership_repartition: [{
-                                    share: parseFloat((token.balance / tokenDetails.totalTokens)).toFixed(4),
+                                    share: parseFloat((token.balance / (tokenDetails.totalTokens * finaryCheat))).toFixed(4),
                                     membership_id: membershipId
                                     }],
                                 place_id: placeId,
-                                monthly_charges: tokenDetails.propertyMaintenanceMonthly || 0,
-                                monthly_rent: tokenDetails.netRentMonth || 0,
-                                yearly_taxes: tokenDetails.propertyTaxes || 0,
+                                monthly_charges: tokenDetails.propertyMaintenanceMonthly * finaryCheat || 0,
+                                monthly_rent: tokenDetails.netRentMonth * finaryCheat || 0,
+                                yearly_taxes: tokenDetails.propertyTaxes * finaryCheat || 0,
                                 rental_period: "annual",
                                 rental_type: "nue"
                             });
@@ -259,6 +285,10 @@ export class RealTSync {
                             type: 'add',
                             token: token.tokenName,
                             error: error.message
+                        });
+                        if (progressCallback) progressCallback("state", {
+                            message: `Erreur lors de l'ajout de ${token.tokenName}: ${error.message}`,
+                            log: `Erreur lors de l'ajout de ${token.tokenName}: ${error.message}`
                         });
                     }
                 }
