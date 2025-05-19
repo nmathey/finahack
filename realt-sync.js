@@ -6,12 +6,10 @@ import { FinaryClient } from "./api.js";
  */
 export class RealTSync {
     /**
-     * @param {string} [realtApiToken] - Token d'authentification pour l'API RealT.
      * @param {string} [realtApiUrl] - URL de l'API RealT.
      */
-    constructor(realtApiToken) {
-        this.realtApiToken = realtApiToken;
-        this.realtApiUrl = 'https://api.realtoken.community/v1';
+    constructor() {
+        this.realtApiUrl = 'https://api.vfhome.fr';
     }
 
     /**
@@ -363,20 +361,10 @@ export class RealTSync {
                 (now - cachedData.timestamp) < CACHE_DURATION) {
                 return cachedData.tokens;
             }
-    
-            const realtToken = await new Promise((resolve) => {
-                chrome.storage.local.get('realtToken', (result) => {
-                    resolve(result.realtToken);
-                });
-            });
 
-            if (!realtToken) {
-                throw new Error("Token RealT non configuré");
-            }
-
-            const response = await fetch(`${this.realtApiUrl}/token`, {
+            // Appel à la nouvelle API sans token
+            const response = await fetch(`${this.realtApiUrl}/list_realtokens/`, {
                 headers: {
-                    'X-AUTH-REALT-TOKEN': `${realtToken}`,
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 }
