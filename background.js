@@ -6,6 +6,7 @@ const initializeMenus = () => {
     const menuItems = [
         //{ id: "showJsonTab_holdings", title: "Afficher JSON_holdings" },
         //{ id: "showAssetsSummary", title: "Voir résumé des assets" },
+        { id: "setRealTWallet", title: "Paramêtre pour RealT" },
         { id: "syncRealTokenFinary", title: "Sync les RealToken sur Finary" },
         {id: "deleteAllRealTokenFinary", title: "Supprimer tous les RealToken de Finary"}
     ];

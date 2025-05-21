@@ -34,6 +34,13 @@ export async function handleMenuClick(info, tab) {
                 }
             });
         });
+    } else if (info.menuItemId === "setRealTWallet") {
+        chrome.windows.create({
+            url: chrome.runtime.getURL("realT_config.html"),
+            type: "popup",
+            width: 500,
+            height: 300
+        });
     } else if (info.menuItemId === "syncRealTokenFinary") {
         try {
             const { realTwalletAddresses } = await new Promise((resolve) => {
