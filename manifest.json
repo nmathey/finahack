@@ -36,7 +36,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["injected.js", "consolidateAssets.js", "add_real_estate.js", "token-input.html", "token-input.js", "json_viewer_realt.html", "realt-viewer.js"],
+      "resources": ["src/export-csv.js", "injected.js", "consolidateAssets.js", "add_real_estate.js", "token-input.html", "token-input.js", "json_viewer_realt.html", "realt-viewer.js"],
       "matches": ["<all_urls>"]
     }
   ],"content_security_policy": {

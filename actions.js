@@ -8,14 +8,14 @@ export async function handleMenuClick(info, tab) {
         console.error("Token de session non disponible");
         return;
     }
-    if (info.menuItemId === "showJsonTab_holdings") {
-        chrome.storage.local.get('holdings', (result) => {
-            if (result.holdings) {
-                chrome.tabs.create({ url: chrome.runtime.getURL("json_viewer_holdings.html") });
-            } else {
-                console.error("Pas de données JSON disponibles.");
-            }
-        });
+    if (info.menuItemId === "getHoldingsAccounts") {
+        chrome.windows.create({
+        url: chrome.runtime.getURL("src/popup_export.html"),
+        type: "popup",
+        width: 400,
+        height: 300
+    });
+
     } else if (info.menuItemId === "showAssetsSummary") {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs.length === 0) {

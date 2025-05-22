@@ -232,11 +232,13 @@ export class FinaryClient {
     async getSelectedOrganization() {
         try {
             const response = await this.apiRequest("/users/me/organizations");
-            if (!response?.result?.id) {
-                throw new Error("Organization ID not found in response");
+            if (!Array.isArray(response?.result) || response.result.length === 0) {
+                throw new Error("Organization list is empty in response");
             }
-            console.log("Selected organization ID:", response.result.id);
-            return response.result.id;
+            // Prend la première organisation par défaut
+            const orgId = response.result[0].id;
+            console.log("Selected organization ID:", orgId);
+            return orgId;
         } catch (error) {
             console.error("❌ Error getting selected organization ID:", error.message);
             return null;
