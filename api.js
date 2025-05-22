@@ -226,6 +226,47 @@ export class FinaryClient {
     }
 
     /**
+     * Récupère l'organisation sélectionnée pour l'utilisateur courant.
+     * @returns {Promise<string|null>} L'ID de l'organisation ou null.
+     */
+    async getSelectedOrganization() {
+        try {
+            const response = await this.apiRequest("/users/me/organizations");
+            if (!Array.isArray(response?.result) || response.result.length === 0) {
+                throw new Error("Organization list is empty in response");
+            }
+            // Prend la première organisation par défaut
+            const orgId = response.result[0].id;
+            console.log("Selected organization ID:", orgId);
+            return orgId;
+        } catch (error) {
+            console.error("❌ Error getting selected organization ID:", error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Récupère les comptes de holdings courants pour une organisation et un membership donnés.
+     * @param {string} organizationID - L'ID de l'organisation.
+     * @param {string} membershipID - L'ID du membership.
+     * @returns {Promise<Object|null>} Les comptes de holdings ou null en cas d'erreur.
+     */
+    async getCurrentHoldingsAccounts(organizationID, membershipID) {
+        try {
+            const endpoint = `/organizations/${organizationID}/memberships/${membershipID}/holdings_accounts`;
+            const response = await this.apiRequest(endpoint);
+            if (!response?.result) {
+                throw new Error("Holdings accounts not found in response");
+            }
+            console.log("Holdings accounts:", response.result);
+            return response.result;
+        } catch (error) {
+            console.error("❌ Error getting holdings accounts:", error.message);
+            return null;
+        }
+    }
+
+    /**
      * Met à jour la devise d'affichage de l'utilisateur.
      * @param {string} currencyCode - Code de la devise (ex: "USD").
      * @returns {Promise<Object>} La réponse de l'API.
