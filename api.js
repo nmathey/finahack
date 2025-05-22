@@ -208,6 +208,24 @@ export class FinaryClient {
     }
 
     /**
+     * Récupère l'ID du membership sélectionné pour l'utilisateur courant.
+     * @returns {Promise<string|null>} L'ID du membership ou null.
+     */
+    async getSelectedMembershipId() {
+        try {
+            const response = await this.apiRequest("/users/me");
+            if (!response?.result?.ui_configuration?.selected_membership?.id) {
+                throw new Error("Selected membership ID not found in user configuration");
+            }
+            console.log("Selected membership ID:", response.result.ui_configuration.selected_membership.id);
+            return response.result.ui_configuration.selected_membership.id;
+        } catch (error) {
+            console.error("❌ Error getting selected membership ID:", error.message);
+            return null;
+        }
+    }
+
+    /**
      * Récupère l'organisation sélectionnée pour l'utilisateur courant.
      * @returns {Promise<string|null>} L'ID de l'organisation ou null.
      */
@@ -221,6 +239,27 @@ export class FinaryClient {
             return response.result.id;
         } catch (error) {
             console.error("❌ Error getting selected organization ID:", error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Récupère les comptes de holdings courants pour une organisation et un membership donnés.
+     * @param {string} organizationID - L'ID de l'organisation.
+     * @param {string} membershipID - L'ID du membership.
+     * @returns {Promise<Object|null>} Les comptes de holdings ou null en cas d'erreur.
+     */
+    async getCurrentHoldingsAccounts(organizationID, membershipID) {
+        try {
+            const endpoint = `/organizations/${organizationID}/memberships/${membershipID}/holdings_accounts`;
+            const response = await this.apiRequest(endpoint);
+            if (!response?.result) {
+                throw new Error("Holdings accounts not found in response");
+            }
+            console.log("Holdings accounts:", response.result);
+            return response.result;
+        } catch (error) {
+            console.error("❌ Error getting holdings accounts:", error.message);
             return null;
         }
     }
