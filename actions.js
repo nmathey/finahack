@@ -50,7 +50,7 @@ export async function handleMenuClick(info, tab) {
                 console.error("Aucune adresse RealT à synchroniser trouvée dans le stockage local.");
                 return;
             }
-            // #ToDo: Pour le moment traitement que d'une seule adresse -- à étendre pour plusieurs adresses
+            // #TODO: Pour le moment traitement que d'une seule adresse -- à étendre pour plusieurs adresses
             const walletAddress = realTwalletAddresses[0];
             const realtSync = new RealTSync();
             const finaryClient = new FinaryClient();

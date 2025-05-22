@@ -71,7 +71,7 @@ export class RealTSync {
             const addresses = Array.isArray(walletAddresses) ? walletAddresses : [walletAddresses];
             console.log('Starting sync for wallets:', addresses);
             if (progressCallback) progressCallback("state", { message: "Gestion de la devise d'affichage..." });
-            // #ToDo: gérer dynamiquement la devise de chaque token - pour l'instant, on force à USD
+            // #TODO: gérer dynamiquement la devise de chaque token - pour l'instant, on force à USD
             initialCurrency = await this.handleDisplayCurrency(finaryClient, 'USD');
             console.log('Currency handling completed. Initial currency:', initialCurrency);
             if (progressCallback) progressCallback("state", { message: "Comparaison des tokens..." });

@@ -208,19 +208,19 @@ export class FinaryClient {
     }
 
     /**
-     * Récupère l'ID du membership sélectionné pour l'utilisateur courant.
-     * @returns {Promise<string|null>} L'ID du membership ou null.
+     * Récupère l'organisation sélectionnée pour l'utilisateur courant.
+     * @returns {Promise<string|null>} L'ID de l'organisation ou null.
      */
-    async getSelectedMembershipId() {
+    async getSelectedOrganization() {
         try {
-            const response = await this.apiRequest("/users/me");
-            if (!response?.result?.ui_configuration?.selected_membership?.id) {
-                throw new Error("Selected membership ID not found in user configuration");
+            const response = await this.apiRequest("/users/me/organizations");
+            if (!response?.result?.id) {
+                throw new Error("Organization ID not found in response");
             }
-            console.log("Selected membership ID:", response.result.ui_configuration.selected_membership.id);
-            return response.result.ui_configuration.selected_membership.id;
+            console.log("Selected organization ID:", response.result.id);
+            return response.result.id;
         } catch (error) {
-            console.error("❌ Error getting selected membership ID:", error.message);
+            console.error("❌ Error getting selected organization ID:", error.message);
             return null;
         }
     }
