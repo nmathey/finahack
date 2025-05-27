@@ -358,4 +358,92 @@ export class FinaryClient {
             method: 'DELETE'
         });
     }
+
+    /**
+     * Récupère la liste des crowdlendings de l'utilisateur.
+     * @returns {Promise<Object>} Liste des crowdlendings.
+     */
+    async getCrowdlendingAssets() {
+        return await this.apiRequest('/users/me/crowdlendings');
+    }
+
+    /**
+     * Ajoute un crowdlending à l'utilisateur.
+     * @param {Object} data - Données du crowdlending à ajouter.
+     * @returns {Promise<Object>} La réponse de l'API.
+     */
+    async addCrowdlendingAsset(data) {
+        return await this.apiRequest('/users/me/crowdlendings', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    /**
+     * Met à jour un crowdlending existant.
+     * @param {string} id - L'identifiant du crowdlending à mettre à jour.
+     * @param {Object} data - Les nouvelles données du crowdlending.
+     * @returns {Promise<Object>} La réponse de l'API.
+     */
+    async updateCrowdlendingAsset(id, data) {
+        return await this.apiRequest(`/users/me/crowdlendings/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    /**
+     * Supprime un crowdlending existant.
+     * @param {string} id - L'identifiant du crowdlending à supprimer.
+     * @returns {Promise<Object>} La réponse de l'API.
+     */
+    async deleteCrowdlendingAsset(id) {
+        return await this.apiRequest(`/users/me/crowdlendings/${id}`, {
+            method: 'DELETE'
+        });
+    }
+
+    /**
+     * Récupère la liste des comptes de l'utilisateur.
+     * @returns {Promise<Object>} Liste des comptes.
+     */
+    async getHoldingsAccounts() {
+        return await this.apiRequest('/users/me/holdings_accounts');
+    }
+
+    /**
+     * Ajoute un compte à l'utilisateur.
+     * @param {Object} data - Données du compte à ajouter.
+     * @returns {Promise<Object>} La réponse de l'API.
+     */
+    async addHoldingsAccount(data) {
+        return await this.apiRequest('/users/me/holdings_accounts', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    /**
+     * Met à jour un compte existant.
+     * @param {string} id - L'identifiant du compte à mettre à jour.
+     * @param {Object} data - Les nouvelles données du compte.
+     * @returns {Promise<Object>} La réponse de l'API.
+     */
+    async updateHoldingsAccount(id, data) {
+        return await this.apiRequest(`/users/me/holdings_accounts/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    /**
+     * Supprime un compte existant.
+     * @param {string} id - L'identifiant du compte à supprimer.
+     * @returns {Promise<Object>} La réponse de l'API.
+     */
+    async deleteHoldingsAccount(id) {
+        return await this.apiRequest(`/users/me/holdings_accounts/${id}`, {
+            method: 'DELETE'
+        });
+    }
 }
