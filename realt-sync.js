@@ -92,7 +92,8 @@ export class RealTSync {
 
             // Updates
             console.log('\n--- Starting Updates ---');
-            await Promise.all(combined.toUpdate.map(async (item, idx) => {
+            for (let idx = 0; idx < combined.toUpdate.length; idx++) {
+                const item = combined.toUpdate[idx];
                 try {
                     const progress = Math.round(100 * (idx + 1) / (combined.toUpdate.length || 1));
                     if (progressCallback) progressCallback("update", {
@@ -124,9 +125,9 @@ export class RealTSync {
                             name: item.wallet.tokenName,
                             user_estimated_value: item.wallet.realTDetails.tokenPrice * item.wallet.realTDetails.totalTokens * finaryCheat,
                             ownership_repartition: [{
-                                share: parseFloat((item.wallet.balance / (item.wallet.realTDetails.totalTokens * finaryCheat))).toFixed(4),
+                                share: parseFloat((item.wallet.balance / (item.wallet.realTDetails.totalTokens * finaryCheat))).toFixed(4)*1,
                                 membership_id: membershipId
-                                }],
+                            }],
                             description: `RealT - ${item.wallet.tokenName} (${item.wallet.contractAddress})`
                         }
                     );
@@ -144,7 +145,7 @@ export class RealTSync {
                         log: `Erreur lors de la mise à jour de ${item.wallet.tokenName}: ${error.message}`
                     });
                 }
-            }));
+            };
 
             // Deletions
             console.log('\n--- Starting Deletions ---');
@@ -224,6 +225,9 @@ export class RealTSync {
                         } else if (calulatedOnwership >= 0.0000005) {
                             finaryCheat = 0.01;
                         }  
+                        
+                        const surfaceValue = Number(tokenDetails.squareFeet) * 0.09290304 * finaryCheat;
+                        console.log(surfaceValue, 'm²');
 
                         await this.retryApiCall(async () => {
                             await finaryClient.addRealEstateAsset({
@@ -255,7 +259,7 @@ export class RealTSync {
                                 is_estimable: false,
                                 user_estimated_value: (tokenDetails.tokenPrice * tokenDetails.totalTokens * finaryCheat),
                                 description: `RealT - ${token.tokenName} (${token.contractAddress})`,
-                                surface: tokenDetails.squareFeet * 0.09290304 * finaryCheat, // Convert sq ft to sq m
+                                surface: (surfaceValue && !isNaN(surfaceValue) && surfaceValue > 1) ? surfaceValue : 1, // 1 m² par défaut si problème
                                 agency_fees: "",
                                 notary_fees: "",
                                 furnishing_fees: "",

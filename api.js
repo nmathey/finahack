@@ -126,7 +126,7 @@ export class FinaryClient {
      * @param {Object} [options={}] - Options fetch (méthode, headers, body...).
      * @returns {Promise<any>} La réponse de l'API ou null en cas d'erreur.
      */
-    async apiRequest(endpoint, options = {}) {
+    async apiRequest(endpoint, options = {}, contextInfo = {}) {
         let retryCount = 0;
 
         const executeRequest = async () => {
@@ -157,6 +157,18 @@ export class FinaryClient {
                     if (response.status === 401) {
                         throw new Error('TOKEN_EXPIRE');
                     }
+                    if (response.status === 400) {
+                        let errorDetails = "";
+                        try {
+                            errorDetails = await response.text();
+                        } catch (e) {}
+                        console.error("❌ HTTP 400 - Bad Request", {
+                            endpoint,
+                            data: options.body,
+                            context: contextInfo,
+                            apiError: errorDetails
+                        });
+                    }
                     if (response.status === 500 && retryCount < this.MAX_RETRIES) {
                         retryCount++;
                         console.log(`🔄 Retry ${retryCount}/${this.MAX_RETRIES} after 500 error`);
@@ -174,7 +186,16 @@ export class FinaryClient {
                         return null;
                     }
                     try {
-                        return JSON.parse(text);
+                        const parsed = JSON.parse(text);
+                        // Ajoute ce log pour afficher le contexte à chaque appel
+                        if (Object.keys(contextInfo).length > 0) {
+                            console.log("✅ API call context:", {
+                                endpoint,
+                                data: options.body,
+                                context: contextInfo
+                            });
+                        }
+                        return parsed;
                     } catch (e) {
                         console.error("❌ JSON parse error:", e);
                         throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
@@ -345,7 +366,7 @@ export class FinaryClient {
         return await this.apiRequest(`/users/me/real_estates/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data)
-        });
+        }, { id, data });
     }
 
     /**
