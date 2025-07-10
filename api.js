@@ -158,10 +158,15 @@ export class FinaryClient {
                         throw new Error('TOKEN_EXPIRE');
                     }
                     if (response.status === 400) {
+                        let errorDetails = "";
+                        try {
+                            errorDetails = await response.text();
+                        } catch (e) {}
                         console.error("❌ HTTP 400 - Bad Request", {
                             endpoint,
                             data: options.body,
-                            context: contextInfo
+                            context: contextInfo,
+                            apiError: errorDetails
                         });
                     }
                     if (response.status === 500 && retryCount < this.MAX_RETRIES) {
