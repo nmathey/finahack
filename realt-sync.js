@@ -92,7 +92,8 @@ export class RealTSync {
 
             // Updates
             console.log('\n--- Starting Updates ---');
-            await Promise.all(combined.toUpdate.map(async (item, idx) => {
+            for (let idx = 0; idx < combined.toUpdate.length; idx++) {
+                const item = combined.toUpdate[idx];
                 try {
                     const progress = Math.round(100 * (idx + 1) / (combined.toUpdate.length || 1));
                     if (progressCallback) progressCallback("update", {
@@ -126,7 +127,7 @@ export class RealTSync {
                             ownership_repartition: [{
                                 share: parseFloat((item.wallet.balance / (item.wallet.realTDetails.totalTokens * finaryCheat))).toFixed(4),
                                 membership_id: membershipId
-                                }],
+                            }],
                             description: `RealT - ${item.wallet.tokenName} (${item.wallet.contractAddress})`
                         }
                     );
@@ -144,7 +145,7 @@ export class RealTSync {
                         log: `Erreur lors de la mise à jour de ${item.wallet.tokenName}: ${error.message}`
                     });
                 }
-            }));
+            };
 
             // Deletions
             console.log('\n--- Starting Deletions ---');

@@ -181,7 +181,16 @@ export class FinaryClient {
                         return null;
                     }
                     try {
-                        return JSON.parse(text);
+                        const parsed = JSON.parse(text);
+                        // Ajoute ce log pour afficher le contexte à chaque appel
+                        if (Object.keys(contextInfo).length > 0) {
+                            console.log("✅ API call context:", {
+                                endpoint,
+                                data: options.body,
+                                context: contextInfo
+                            });
+                        }
+                        return parsed;
                     } catch (e) {
                         console.error("❌ JSON parse error:", e);
                         throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
