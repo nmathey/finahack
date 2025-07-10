@@ -126,7 +126,7 @@ export class FinaryClient {
      * @param {Object} [options={}] - Options fetch (méthode, headers, body...).
      * @returns {Promise<any>} La réponse de l'API ou null en cas d'erreur.
      */
-    async apiRequest(endpoint, options = {}) {
+    async apiRequest(endpoint, options = {}, contextInfo = {}) {
         let retryCount = 0;
 
         const executeRequest = async () => {
@@ -156,6 +156,13 @@ export class FinaryClient {
                 if (!response.ok) {
                     if (response.status === 401) {
                         throw new Error('TOKEN_EXPIRE');
+                    }
+                    if (response.status === 400) {
+                        console.error("❌ HTTP 400 - Bad Request", {
+                            endpoint,
+                            data: options.body,
+                            context: contextInfo
+                        });
                     }
                     if (response.status === 500 && retryCount < this.MAX_RETRIES) {
                         retryCount++;
@@ -345,7 +352,7 @@ export class FinaryClient {
         return await this.apiRequest(`/users/me/real_estates/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data)
-        });
+        }, { id, data });
     }
 
     /**
