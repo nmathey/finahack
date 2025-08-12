@@ -423,4 +423,24 @@ export class FinaryClient {
             method: 'DELETE'
         });
     }
+
+    /**
+     * Récupère les comptes de portefeuille de l'utilisateur.
+     * @returns {Promise<Object>} Liste des comptes de portefeuille.
+     */
+    async getHoldingsAccounts() {
+        return await this.apiRequest('/users/me/holdings_accounts');
+    }
+
+    /**
+     * Crée un compte de portefeuille pour l'utilisateur.
+     * @param {Object} data - Données du compte à créer.
+     * @returns {Promise<Object>} La réponse de l'API.
+     */
+    async createHoldingsAccount(data) {
+        return await this.apiRequest('/users/me/holdings_accounts', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
 }

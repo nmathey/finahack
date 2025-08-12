@@ -63,6 +63,46 @@ export class RealTSync {
     }
 
     /**
+     * Récupère ou crée le compte de crowdlending "RealT" dans Finary.
+     * @param {FinaryClient} finaryClient - Instance du client Finary.
+     * @param {string} membershipId - ID du membership Finary.
+     * @returns {Promise<string>} L'ID du compte de crowdlending "RealT".
+     */
+    async getOrCreateRealTCrowdlendingAccount(finaryClient, membershipId) {
+        const response = await finaryClient.getHoldingsAccounts();
+        if (!response || !response.result) {
+            throw new Error("Impossible de récupérer les comptes de portefeuille Finary.");
+        }
+
+        const accounts = response.result;
+        const realtAccount = accounts.find(acc => acc.manual_type === 'crowdlending' && acc.name === 'RealT');
+
+        if (realtAccount) {
+            console.log("Compte 'RealT' pour crowdlending trouvé:", realtAccount.id);
+            return realtAccount.id;
+        } else {
+            console.log("Compte 'RealT' pour crowdlending non trouvé, création en cours...");
+            const newAccountPayload = {
+                name: "RealT",
+                ownership_repartition: [{
+                    membership_id: membershipId,
+                    share: 1
+                }],
+                manual_type: "crowdlending",
+                currency: {
+                    code: "USD"
+                }
+            };
+            const newAccountResponse = await finaryClient.createHoldingsAccount(newAccountPayload);
+            if (!newAccountResponse || !newAccountResponse.result || !newAccountResponse.result.id) {
+                throw new Error("Échec de la création du compte de crowdlending 'RealT'.");
+            }
+            console.log("Compte 'RealT' pour crowdlending créé:", newAccountResponse.result.id);
+            return newAccountResponse.result.id;
+        }
+    }
+
+    /**
      * Synchronise les tokens RealT d'un ou plusieurs wallets avec Finary.
      * @param {string|string[]} walletAddresses - Adresse(s) du wallet à synchroniser.
      * @param {FinaryClient} finaryClient - Instance du client Finary.
@@ -314,7 +354,8 @@ export class RealTSync {
             }
 
             // Sync crowdlending assets
-            const crowdlendingResults = await this.syncWalletWithFinary_crowdlending(addresses, finaryClient, progressCallback);
+            const realtCrowdlendingAccountId = await this.getOrCreateRealTCrowdlendingAccount(finaryClient, membershipId);
+            const crowdlendingResults = await this.syncWalletWithFinary_crowdlending(addresses, finaryClient, progressCallback, realtCrowdlendingAccountId);
             processedTokens.updates += crowdlendingResults.updates;
             processedTokens.deletions += crowdlendingResults.deletions;
             processedTokens.additions += crowdlendingResults.additions;
@@ -872,7 +913,7 @@ export class RealTSync {
      * @param {function} [progressCallback] - Callback appelé à chaque étape clé (add, update, delete, state).
      * @returns {Promise<Object>} Résumé de la synchronisation.
      */
-    async syncWalletWithFinary_crowdlending(walletAddresses, finaryClient, progressCallback) {
+    async syncWalletWithFinary_crowdlending(walletAddresses, finaryClient, progressCallback, realtCrowdlendingAccountId) {
         let processedTokens = {
             updates: 0,
             deletions: 0,
@@ -909,6 +950,7 @@ export class RealTSync {
                         current_value: currentValue,
                         current_price: item.wallet.realTDetails.tokenPrice,
                         annual_yield: item.wallet.realTDetails.annualPercentYield,
+                        account: { id: realtCrowdlendingAccountId },
                     });
                     processedTokens.updates++;
                 } catch (error) {
@@ -939,6 +981,8 @@ export class RealTSync {
                         current_value: currentValue,
                         current_price: token.realTDetails.tokenPrice,
                         annual_yield: token.realTDetails.annualPercentYield,
+                        start_date: new Date().toISOString(),
+                        account: { id: realtCrowdlendingAccountId },
                     }));
                     processedTokens.additions++;
                 } catch (error) {
