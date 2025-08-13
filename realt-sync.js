@@ -822,7 +822,7 @@ export class RealTSync {
     async validateLoanTokenDetails(token) {
         const required = [
             'tokenPrice',
-            'annualPercentYield'
+            'annualPercentageYield'
         ];
 
         const missing = required.filter(field =>
@@ -947,9 +947,8 @@ export class RealTSync {
                     await finaryClient.updateCrowdlendingAsset(item.finary.id, {
                         name: `RealT - ${item.wallet.tokenName} (${item.wallet.contractAddress})`,
                         initial_investment: currentValue,
-                        current_value: currentValue,
-                        current_price: item.wallet.realTDetails.tokenPrice,
-                        annual_yield: item.wallet.realTDetails.annualPercentYield,
+                        current_price: currentValue,
+                        annual_yield: item.wallet.realTDetails.annualPercentageYield,
                         account: { id: realtCrowdlendingAccountId },
                     });
                     processedTokens.updates++;
@@ -975,14 +974,15 @@ export class RealTSync {
                     if (progressCallback) progressCallback("add", { tokenName: token.tokenName });
                     await this.validateLoanTokenDetails(token);
                     const currentValue = token.balance * token.realTDetails.tokenPrice;
+                    console.log(`Adding crowdlending token: ${token.balance}x ${token.tokenName} (${token.contractAddress}) - Total value ${currentValue} (${token.balance} * ${token.realTDetails.tokenPrice})`);
                     await this.retryApiCall(() => finaryClient.addCrowdlendingAsset({
                         name: `RealT - ${token.tokenName} (${token.contractAddress})`,
                         initial_investment: currentValue,
-                        current_value: currentValue,
-                        current_price: token.realTDetails.tokenPrice,
-                        annual_yield: token.realTDetails.annualPercentYield,
+                        current_price: currentValue,
+                        annual_yield: token.realTDetails.annualPercentageYield,
                         start_date: new Date().toISOString(),
                         account: { id: realtCrowdlendingAccountId },
+                        currency: { code: 'USD'}, // Devise par défaut pour les prêts RealT à ce jour
                     }));
                     processedTokens.additions++;
                 } catch (error) {
