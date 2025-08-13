@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FinaHack",
-  "version": "0.2.1",
+  "version": "0.2.4",
   "description": "Une extension pour intéragir avec Finary",
   "permissions": [
     "contextMenus", 

@@ -379,4 +379,68 @@ export class FinaryClient {
             method: 'DELETE'
         });
     }
+
+    /**
+     * Récupère la liste des actifs de crowdlending de l'utilisateur.
+     * @returns {Promise<Object>} Liste des actifs de crowdlending.
+     */
+    async getCrowdlendingAssets() {
+        return await this.apiRequest('/users/me/crowdlendings');
+    }
+
+    /**
+     * Ajoute un actif de crowdlending à l'utilisateur.
+     * @param {Object} data - Données de l'actif à ajouter.
+     * @returns {Promise<Object>} La réponse de l'API.
+     */
+    async addCrowdlendingAsset(data) {
+        return await this.apiRequest('/users/me/crowdlendings', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    /**
+     * Met à jour un actif de crowdlending existant.
+     * @param {string} id - L'identifiant de l'actif à mettre à jour.
+     * @param {Object} data - Les nouvelles données de l'actif.
+     * @returns {Promise<Object>} La réponse de l'API.
+     */
+    async updateCrowdlendingAsset(id, data) {
+        return await this.apiRequest(`/users/me/crowdlendings/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    /**
+     * Supprime un actif de crowdlending existant.
+     * @param {string} id - L'identifiant de l'actif à supprimer.
+     * @returns {Promise<Object>} La réponse de l'API.
+     */
+    async deleteCrowdlendingAsset(id) {
+        return await this.apiRequest(`/users/me/crowdlendings/${id}`, {
+            method: 'DELETE'
+        });
+    }
+
+    /**
+     * Récupère les comptes de portefeuille de l'utilisateur.
+     * @returns {Promise<Object>} Liste des comptes de portefeuille.
+     */
+    async getHoldingsAccounts() {
+        return await this.apiRequest('/users/me/holdings_accounts');
+    }
+
+    /**
+     * Crée un compte de portefeuille pour l'utilisateur.
+     * @param {Object} data - Données du compte à créer.
+     * @returns {Promise<Object>} La réponse de l'API.
+     */
+    async createHoldingsAccount(data) {
+        return await this.apiRequest('/users/me/holdings_accounts', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
 }

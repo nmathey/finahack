@@ -37,12 +37,69 @@ export class RealTSync {
     }
 
     /**
+     * Récupère uniquement les tokens RealT de type "loan_income" pour un wallet.
+     * @param {string} walletAddress - Adresse du wallet.
+     * @returns {Promise<Object[]>} Liste filtrée des tokens RealT de prêt.
+     */
+    async getWalletRealTTokens_crowdlending(walletAddress) {
+        try {
+            const allTokens = await this.getWalletRealTTokens(walletAddress);
+            return allTokens.filter(token =>
+                token.realTDetails?.productType === "loan_income"
+            );
+        } catch (error) {
+            console.error("Error filtering crowdlending tokens:", error);
+            throw error;
+        }
+    }
+
+    /**
      * Normalise une adresse de contrat (minuscule).
      * @param {string} address - Adresse à normaliser.
      * @returns {string|null} Adresse normalisée ou null.
      */
     normalizeAddress(address) {
         return address ? address.toLowerCase() : null;
+    }
+
+    /**
+     * Récupère ou crée le compte de crowdlending "RealT" dans Finary.
+     * @param {FinaryClient} finaryClient - Instance du client Finary.
+     * @param {string} membershipId - ID du membership Finary.
+     * @returns {Promise<string>} L'ID du compte de crowdlending "RealT".
+     */
+    async getOrCreateRealTCrowdlendingAccount(finaryClient, membershipId) {
+        const response = await finaryClient.getHoldingsAccounts();
+        if (!response || !response.result) {
+            throw new Error("Impossible de récupérer les comptes de portefeuille Finary.");
+        }
+
+        const accounts = response.result;
+        const realtAccount = accounts.find(acc => acc.manual_type === 'crowdlending' && acc.name === 'RealT');
+
+        if (realtAccount) {
+            console.log("Compte 'RealT' pour crowdlending trouvé:", realtAccount.id);
+            return realtAccount.id;
+        } else {
+            console.log("Compte 'RealT' pour crowdlending non trouvé, création en cours...");
+            const newAccountPayload = {
+                name: "RealT",
+                ownership_repartition: [{
+                    membership_id: membershipId,
+                    share: 1
+                }],
+                manual_type: "crowdlending",
+                currency: {
+                    code: "USD"
+                }
+            };
+            const newAccountResponse = await finaryClient.createHoldingsAccount(newAccountPayload);
+            if (!newAccountResponse || !newAccountResponse.result || !newAccountResponse.result.id) {
+                throw new Error("Échec de la création du compte de crowdlending 'RealT'.");
+            }
+            console.log("Compte 'RealT' pour crowdlending créé:", newAccountResponse.result.id);
+            return newAccountResponse.result.id;
+        }
     }
 
     /**
@@ -295,6 +352,14 @@ export class RealTSync {
                     }
                 }
             }
+
+            // Sync crowdlending assets
+            const realtCrowdlendingAccountId = await this.getOrCreateRealTCrowdlendingAccount(finaryClient, membershipId);
+            const crowdlendingResults = await this.syncWalletWithFinary_crowdlending(addresses, finaryClient, progressCallback, realtCrowdlendingAccountId);
+            processedTokens.updates += crowdlendingResults.updates;
+            processedTokens.deletions += crowdlendingResults.deletions;
+            processedTokens.additions += crowdlendingResults.additions;
+            processedTokens.errors = processedTokens.errors.concat(crowdlendingResults.errors);
 
             if (progressCallback) progressCallback("state", {
                 message: "Synchronisation terminée.",
@@ -746,6 +811,190 @@ export class RealTSync {
 
         if (missing.length > 0) {
             throw new Error(`Missing required fields for token ${token.tokenName}: ${missing.join(', ')}`);
+        }
+    }
+
+    /**
+     * Valide la présence des champs obligatoires dans les détails d'un token de prêt.
+     * @param {Object} token - Token à valider.
+     * @throws {Error} Si des champs sont manquants.
+     */
+    async validateLoanTokenDetails(token) {
+        const required = [
+            'tokenPrice',
+            'annualPercentageYield'
+        ];
+
+        const missing = required.filter(field =>
+            !token.realTDetails || token.realTDetails[field] === undefined
+        );
+
+        if (missing.length > 0) {
+            throw new Error(`Missing required fields for loan token ${token.tokenName}: ${missing.join(', ')}`);
+        }
+    }
+
+    /**
+     * Récupère les actifs de crowdlending RealT présents dans Finary.
+     * @param {FinaryClient} finaryClient - Instance du client Finary.
+     * @returns {Promise<Object[]>} Liste des actifs de crowdlending RealT dans Finary.
+     */
+    async getFinaryRealTCrowdlending(finaryClient) {
+        try {
+            const response = await finaryClient.getCrowdlendingAssets();
+
+            if (!response || !response.result) {
+                return [];
+            }
+
+            const assetsArray = Array.isArray(response.result) ? response.result : [response.result];
+
+            const allRealTTokens = await this.getAllRealTTokens();
+
+            const realtAssets = assetsArray
+                .filter(asset => asset?.name?.startsWith("RealT - "))
+                .map(asset => {
+                    const contractAddress = this.normalizeAddress(
+                        asset.name.match(/0x[a-fA-F0-9]{40}/)?.[0]
+                    );
+
+                    const tokenDetails = contractAddress
+                        ? allRealTTokens.find(t => t?.uuid === contractAddress)
+                        : null;
+
+                    return {
+                        ...asset,
+                        contractAddress,
+                        tokenDetails
+                    };
+                });
+
+            console.log(`Found ${realtAssets.length} RealT crowdlending assets in Finary`);
+            return realtAssets;
+
+        } catch (error) {
+            console.error("Error getting RealT crowdlending assets from Finary:", error);
+            throw error;
+        }
+    }
+
+    /**
+     * Compare les tokens de prêt d'un wallet et ceux présents dans Finary.
+     * @param {string} walletAddress - Adresse du wallet.
+     * @param {FinaryClient} finaryClient - Instance du client Finary.
+     * @returns {Promise<Object>} Objets à mettre à jour, supprimer ou ajouter.
+     */
+    async compareWalletAndFinaryCrowdlendingTokens(walletAddress, finaryClient) {
+        try {
+            const [walletTokens, finaryTokens] = await Promise.all([
+                this.getWalletRealTTokens_crowdlending(walletAddress),
+                this.getFinaryRealTCrowdlending(finaryClient)
+            ]);
+
+            console.log('Comparing crowdlending tokens:', {
+                wallet: walletTokens.length,
+                finary: finaryTokens.length
+            });
+
+            const updates = this.findTokensToUpdate(walletTokens, finaryTokens);
+            console.log('Crowdlending token changes needed:', updates);
+
+            return updates;
+        } catch (error) {
+            console.error('Error comparing crowdlending tokens:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Synchronise les tokens de prêt RealT d'un ou plusieurs wallets avec Finary.
+     * @param {string|string[]} walletAddresses - Adresse(s) du wallet à synchroniser.
+     * @param {FinaryClient} finaryClient - Instance du client Finary.
+     * @param {function} [progressCallback] - Callback appelé à chaque étape clé (add, update, delete, state).
+     * @returns {Promise<Object>} Résumé de la synchronisation.
+     */
+    async syncWalletWithFinary_crowdlending(walletAddresses, finaryClient, progressCallback, realtCrowdlendingAccountId) {
+        let processedTokens = {
+            updates: 0,
+            deletions: 0,
+            additions: 0,
+            errors: []
+        };
+
+        try {
+            if (progressCallback) progressCallback("state", { message: "Synchronisation des prêts RealT..." });
+
+            const addresses = Array.isArray(walletAddresses) ? walletAddresses : [walletAddresses];
+
+            const walletComparisonResults = await Promise.all(
+                addresses.map(address => this.compareWalletAndFinaryCrowdlendingTokens(address, finaryClient))
+            );
+
+            const combined = walletComparisonResults.reduce((acc, result) => {
+                acc.toUpdate = [...acc.toUpdate, ...result.toUpdate];
+                acc.toDelete = [...acc.toDelete, ...result.toDelete];
+                acc.toAdd = [...acc.toAdd, ...result.toAdd];
+                return acc;
+            }, { toUpdate: [], toDelete: [], toAdd: [] });
+
+            if (progressCallback) progressCallback("state", { message: `Prêts: ${combined.toUpdate.length} MàJ, ${combined.toDelete.length} Suppr., ${combined.toAdd.length} Ajouts` });
+
+            // Updates
+            for (const item of combined.toUpdate) {
+                try {
+                    if (progressCallback) progressCallback("update", { tokenName: item.wallet.tokenName });
+                    const currentValue = item.wallet.balance * item.wallet.realTDetails.tokenPrice;
+                    await finaryClient.updateCrowdlendingAsset(item.finary.id, {
+                        name: `RealT - ${item.wallet.tokenName} (${item.wallet.contractAddress})`,
+                        initial_investment: currentValue,
+                        current_price: currentValue,
+                        annual_yield: item.wallet.realTDetails.annualPercentageYield,
+                        account: { id: realtCrowdlendingAccountId },
+                    });
+                    processedTokens.updates++;
+                } catch (error) {
+                    processedTokens.errors.push({ type: 'update_loan', token: item.wallet.tokenName, error: error.message });
+                }
+            }
+
+            // Deletions
+            for (const token of combined.toDelete) {
+                try {
+                    if (progressCallback) progressCallback("delete", { tokenName: token.name });
+                    await this.retryApiCall(() => finaryClient.deleteCrowdlendingAsset(token.id));
+                    processedTokens.deletions++;
+                } catch (error) {
+                    processedTokens.errors.push({ type: 'delete_loan', token: token.name, error: error.message });
+                }
+            }
+
+            // Additions
+            for (const token of combined.toAdd) {
+                try {
+                    if (progressCallback) progressCallback("add", { tokenName: token.tokenName });
+                    await this.validateLoanTokenDetails(token);
+                    const currentValue = token.balance * token.realTDetails.tokenPrice;
+                    console.log(`Adding crowdlending token: ${token.balance}x ${token.tokenName} (${token.contractAddress}) - Total value ${currentValue} (${token.balance} * ${token.realTDetails.tokenPrice})`);
+                    await this.retryApiCall(() => finaryClient.addCrowdlendingAsset({
+                        name: `RealT - ${token.tokenName} (${token.contractAddress})`,
+                        initial_investment: currentValue,
+                        current_price: currentValue,
+                        annual_yield: token.realTDetails.annualPercentageYield,
+                        start_date: new Date().toISOString(),
+                        account: { id: realtCrowdlendingAccountId },
+                        currency: { code: 'USD'}, // Devise par défaut pour les prêts RealT à ce jour
+                    }));
+                    processedTokens.additions++;
+                } catch (error) {
+                    processedTokens.errors.push({ type: 'add_loan', token: token.tokenName, error: error.message });
+                }
+            }
+
+            return processedTokens;
+        } catch (error) {
+            console.error('Crowdlending sync error:', error);
+            if (progressCallback) progressCallback("state", { message: `Erreur (prêts): ${error.message}` });
+            throw error;
         }
     }
     
