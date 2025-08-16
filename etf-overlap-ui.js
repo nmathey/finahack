@@ -4,7 +4,6 @@
  */
 class EtfOverlapUI {
     constructor() {
-        this.finaryClient = new FinaryClient();
         this.analyzer = new EtfOverlapAnalyzer();
         this.modalId = 'etf-overlap-modal';
         this.styleId = 'etf-overlap-styles';
@@ -24,14 +23,34 @@ class EtfOverlapUI {
         });
 
         try {
-            const holdingsAccounts = await this.finaryClient.getHoldingsAccounts();
-            if (!holdingsAccounts || !holdingsAccounts.accounts) {
-                this.updateModalContent({ content: '<p>Erreur : Impossible de récupérer les comptes.</p>' });
+            const holdingsAccounts = await new Promise((resolve, reject) => {
+                chrome.runtime.sendMessage({ action: "GET_HOLDINGS_ACCOUNTS" }, (response) => {
+                    if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
+                    if (response?.error) return reject(new Error(response.error));
+                    resolve(response);
+                });
+            });
+
+            console.log('[etfOverlapUI] holdingsAccounts response:', holdingsAccounts);
+
+            // Normalize to an array of accounts
+            let accountsArray = [];
+            if (Array.isArray(holdingsAccounts)) {
+                accountsArray = holdingsAccounts;
+            } else if (holdingsAccounts?.accounts && Array.isArray(holdingsAccounts.accounts)) {
+                accountsArray = holdingsAccounts.accounts;
+            } else if (holdingsAccounts && typeof holdingsAccounts === 'object') {
+                accountsArray = holdingsAccounts.accounts || holdingsAccounts.data || [];
+                if (!Array.isArray(accountsArray)) accountsArray = Object.values(holdingsAccounts);
+            }
+
+            if (!accountsArray || accountsArray.length === 0) {
+                this.updateModalContent({ content: `<p>Erreur : Impossible de récupérer les comptes.</p><pre>${JSON.stringify(holdingsAccounts, null, 2)}</pre>` });
                 return;
             }
 
             // Filter for accounts that are investment accounts and contain at least one ETF
-            const stockAccounts = holdingsAccounts.accounts.filter(acc =>
+            const stockAccounts = accountsArray.filter(acc =>
                 acc.bank_account_type.account_type === 'investment' &&
                 acc.securities.some(s => s.security.security_type === 'etf' && s.security.isin)
             );
@@ -59,7 +78,7 @@ class EtfOverlapUI {
                 <p>Sélectionnez les comptes à inclure dans l'analyse :</p>
                 <div class="finary-accounts-list">${accountsHtml}</div>
             `;
-            const modalActions = '<button id="start-analysis-btn" class="finary-btn finary-btn-primary">Lancer l'analyse</button>';
+            const modalActions = '<button id="start-analysis-btn" class="finary-btn finary-btn-primary">Lancer l\'analyse</button>';
 
             this.updateModalContent({ content: modalContent, actions: modalActions });
 
@@ -303,18 +322,33 @@ class EtfOverlapUI {
     }
 }
 
-// This part of the script will run in the content script context
-if (typeof window.etfOverlapUI === 'undefined') {
-    window.etfOverlapUI = new EtfOverlapUI();
-}
+// Cette section ne doit s'exécuter que dans le contexte d'un content script (page), pas dans le service worker/background
+if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
+    if (typeof window.etfOverlapUI === 'undefined') {
+        window.etfOverlapUI = new EtfOverlapUI();
+    }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === "showEtfOverlapModal") {
-        if (typeof FinaryClient !== 'undefined' && typeof EtfOverlapAnalyzer !== 'undefined') {
-             window.etfOverlapUI.showAccountSelection();
-        } else {
-            console.error("FinaryClient or EtfOverlapAnalyzer class not found.");
-            alert("Erreur: Le client API ou l'analyseur n'est pas chargé.");
+    // Remplacement du listener anonyme par une fonction nommée + try/catch
+    function handleRuntimeMessage(message, sender, sendResponse) {
+        try {
+            console.log('[etfOverlapUI] message reçu :', message);
+            if (message.action === "showEtfOverlapModal") {
+                window.etfOverlapUI.showAccountSelection();
+            }
+        } catch (err) {
+            console.error('[etfOverlapUI] erreur dans handleRuntimeMessage :', err);
+            console.error(err && err.stack ? err.stack : '(pas de stack)');
         }
     }
-});
+    chrome.runtime.onMessage.addListener(handleRuntimeMessage);
+
+    // Handlers globaux pour capter les erreurs non gérées dans le content script
+    window.addEventListener('error', (event) => {
+        console.error('[etfOverlapUI] Erreur non gérée :', event.message, '->', `${event.filename}:${event.lineno}:${event.colno}`);
+        console.error(event.error && event.error.stack ? event.error.stack : '(pas de stack)');
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+        console.error('[etfOverlapUI] Rejet de promesse non géré :', event.reason);
+        console.error(event.reason && event.reason.stack ? event.reason.stack : '(pas de stack)');
+    });
+}

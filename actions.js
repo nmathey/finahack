@@ -1,6 +1,5 @@
 import { FinaryClient } from "./api.js";
 import { RealTSync } from "./realt-sync.js";
-import { EtfOverlapUI } from './etf-overlap-ui.js';
 
 export async function handleMenuClick(info, tab) {
     const finaryClient = new FinaryClient();
@@ -95,7 +94,7 @@ export async function handleMenuClick(info, tab) {
             // Injecter les scripts nécessaires en ordre
             chrome.scripting.executeScript({
                 target: { tabId },
-                files: ["api.js", "etf-overlap-analyzer.js", "etf-overlap-ui.js"]
+                files: ["etf-overlap-analyzer.js", "etf-overlap-ui.js"]
             }, () => {
                 if (chrome.runtime.lastError) {
                     console.error("Erreur lors de l'injection des scripts:", chrome.runtime.lastError);
@@ -137,3 +136,25 @@ export async function handleMenuClick(info, tab) {
         }
     }
 }
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message?.action === "GET_HOLDINGS_ACCOUNTS") {
+        (async () => {
+            try {
+                console.log('[background] GET_HOLDINGS_ACCOUNTS from', sender);
+                const finaryClient = new FinaryClient();
+                const raw = await finaryClient.getHoldingsAccounts();
+                console.log('[background] raw holdings:', raw);
+                let payload;
+                if (Array.isArray(raw)) payload = { accounts: raw };
+                else if (raw && raw.accounts) payload = raw;
+                else payload = { accounts: raw ? [raw] : [] };
+                sendResponse(payload);
+            } catch (err) {
+                console.error("Error getting holdings accounts (background):", err);
+                sendResponse({ error: err.message || String(err) });
+            }
+        })();
+        return true; // réponse asynchrone
+    }
+});
