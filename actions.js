@@ -1,5 +1,6 @@
 import { FinaryClient } from "./api.js";
 import { RealTSync } from "./realt-sync.js";
+import { EtfOverlapUI } from './etf-overlap-ui.js';
 
 export async function handleMenuClick(info, tab) {
     const finaryClient = new FinaryClient();
@@ -84,6 +85,26 @@ export async function handleMenuClick(info, tab) {
         } catch (error) {
             console.error('Sync error:', error);
         }
+    } else if (info.menuItemId === "analyzeEtfOverlap") {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs.length === 0) {
+                console.error("Aucun onglet actif trouvé.");
+                return;
+            }
+            const tabId = tabs[0].id;
+            // Injecter les scripts nécessaires en ordre
+            chrome.scripting.executeScript({
+                target: { tabId },
+                files: ["api.js", "etf-overlap-analyzer.js", "etf-overlap-ui.js"]
+            }, () => {
+                if (chrome.runtime.lastError) {
+                    console.error("Erreur lors de l'injection des scripts:", chrome.runtime.lastError);
+                    return;
+                }
+                // Envoyer un message au script injecté pour lui dire de démarrer
+                chrome.tabs.sendMessage(tabId, { action: "showEtfOverlapModal" });
+            });
+        });
     } else if (info.menuItemId === "deleteAllRealTokenFinary") {
         try {
             const realtSync = new RealTSync();
