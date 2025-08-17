@@ -33,41 +33,106 @@ class EtfOverlapUI {
 
             console.log('[etfOverlapUI] holdingsAccounts response:', holdingsAccounts);
 
-            // Normalize to an array of accounts
+            // Normalize to an array of accounts (robust)
             let accountsArray = [];
             if (Array.isArray(holdingsAccounts)) {
                 accountsArray = holdingsAccounts;
-            } else if (holdingsAccounts?.accounts && Array.isArray(holdingsAccounts.accounts)) {
-                accountsArray = holdingsAccounts.accounts;
             } else if (holdingsAccounts && typeof holdingsAccounts === 'object') {
-                accountsArray = holdingsAccounts.accounts || holdingsAccounts.data || [];
-                if (!Array.isArray(accountsArray)) accountsArray = Object.values(holdingsAccounts);
+                // prefer explicit array fields
+                if (Array.isArray(holdingsAccounts.accounts)) {
+                    accountsArray = holdingsAccounts.accounts;
+                } else if (Array.isArray(holdingsAccounts.data)) {
+                    accountsArray = holdingsAccounts.data;
+                } else if (holdingsAccounts.accounts && typeof holdingsAccounts.accounts === 'object') {
+                    // fallback: object indexed by keys
+                    accountsArray = Object.values(holdingsAccounts.accounts);
+                } else {
+                    // last resort: try object values of the root object
+                    accountsArray = Object.values(holdingsAccounts);
+                }
+            }
+            // ensure it's an array (coerce single account object into array)
+            if (!Array.isArray(accountsArray)) {
+                accountsArray = accountsArray ? [accountsArray] : [];
             }
 
-            if (!accountsArray || accountsArray.length === 0) {
-                this.updateModalContent({ content: `<p>Erreur : Impossible de récupérer les comptes.</p><pre>${JSON.stringify(holdingsAccounts, null, 2)}</pre>` });
-                return;
-            }
+            console.log('[etfOverlapUI] Initial accounts array (type:', typeof accountsArray, 'length:', accountsArray.length, '):', accountsArray);
 
-            // Filter for accounts that are investment accounts and contain at least one ETF
-            const stockAccounts = accountsArray.filter(acc =>
-                acc.bank_account_type.account_type === 'investment' &&
-                acc.securities.some(s => s.security.security_type === 'etf' && s.security.isin)
-            );
+            // Normalize account shape (robust mapping of common keys)
+            const normalizeAccount = (acc) => {
+                if (!acc || typeof acc !== 'object') return acc;
+                const id = acc?.id ?? acc?.account_id ?? acc?.identifier ?? acc?.accountId ?? acc?.idAccount ?? null;
+                const name = acc?.name ?? acc?.account_name ?? acc?.label ?? acc?.displayName ?? acc?.owner_name ?? null;
+                const acctType = acc?.bank_account_type?.account_type ?? acc?.account_type ?? acc?.type ?? acc?.accountType ?? acc?.account_type_label ?? null;
+                const securities = acc?.securities ?? acc?.holdings ?? acc?.positions ?? acc?.assets ?? null;
+                const logo_url = acc?.logo_url ?? acc?.logo ?? acc?.icon ?? null;
+                return Object.assign({}, acc, { id, name, acctType, securities, logo_url });
+            };
+            accountsArray = accountsArray.map(normalizeAccount);
+            console.log('[etfOverlapUI] normalized accounts sample:', accountsArray.slice(0,5));
+ 
+             if (!accountsArray || accountsArray.length === 0) {
+                 this.updateModalContent({ content: `<p>Erreur : Impossible de récupérer les comptes.</p><pre>${JSON.stringify(holdingsAccounts, null, 2)}</pre>` });
+                 return;
+             }
+ 
+            const isInvestmentAccount = (acc) => {
+                console.log('[isInvestmentAccount] checking account object:', acc);
+                const acctType = acc?.acctType ?? acc?.bank_account_type?.account_type ?? acc?.account_type ?? acc?.type ?? acc?.accountType;
+                return typeof acctType === 'string' && acctType.toLowerCase() === 'investment';
+            };
+ 
+            // Normalize securities: return array of security objects (each with security_type and isin)
+            const normalizeSecurities = (securities) => {
+                console.log('[normalizeSecurities] input:', securities);
+                if (!securities) {
+                    console.log('[normalizeSecurities] No securities provided, returning empty array.');
+                    return [];
+                }
+                if (Array.isArray(securities)) {
+                    const result = securities
+                        .map(item => item?.security ?? item) // support { security: {...} } or direct security objects
+                        .filter(Boolean);
+                    console.log('[normalizeSecurities] Array input, normalized:', result);
+                    return result;
+                }
+                if (typeof securities === 'object') {
+                    if (securities.security) {
+                        console.log('[normalizeSecurities] Object with .security property:', securities.security);
+                        return [securities.security];
+                    }
+                    const result = Object.values(securities).map(item => item?.security ?? item).filter(Boolean);
+                    console.log('[normalizeSecurities] Object input, normalized:', result);
+                    return result;
+                }
+                console.log('[normalizeSecurities] Unhandled input type, returning empty array.');
+                return [];
+            };
+
+            const hasEtf = (acc) => {
+                const secs = normalizeSecurities(acc.securities);
+                const found = secs.some(s => typeof s?.security_type === 'string' && s.security_type.toLowerCase() === 'etf' && !!s.isin);
+                console.log(`[hasEtf] Account: ${acc?.name || acc?.id || 'unknown'}, found ETF:`, found, 'Securities:', secs);
+                return found;
+            };
+
+            const stockAccounts = accountsArray.filter(acc => isInvestmentAccount(acc) && hasEtf(acc));
 
             if (stockAccounts.length === 0) {
-                this.updateModalContent({ content: '<p>Aucun compte d\'investissement avec des ETFs n\'a été trouvé.</p>' });
+                console.warn('[etfOverlapUI] Aucun compte d\'investissement contenant des ETFs trouvé. Exemples de comptes:', accountsArray.slice(0,5));
+                this.updateModalContent({ content: '<p>Aucun compte d\'investissement avec des ETFs n\'a été trouvé.</p><pre>' + JSON.stringify(accountsArray.slice(0,5), null, 2) + '</pre>' });
                 return;
             }
 
             const accountsHtml = stockAccounts.map(account => {
-                const etfCount = account.securities.filter(s => s.security.security_type === 'etf' && s.security.isin).length;
+                const secs = normalizeSecurities(account.securities);
+                const etfCount = secs.filter(s => typeof s?.security_type === 'string' && s.security_type.toLowerCase() === 'etf' && !!s.isin).length;
                 return `
                     <div class="finary-account-item">
                         <input type="checkbox" id="account-${account.id}" name="finary-accounts" value="${account.id}" checked>
                         <label for="account-${account.id}">
-                            <img src="${account.logo_url}" class="finary-account-logo" alt="">
-                            <span class="account-name">${account.name}</span>
+                            <img src="${account.logo_url || ''}" class="finary-account-logo" alt="">
+                            <span class="account-name">${account.name || 'Compte'}</span>
                             <span class="account-info">(${etfCount} ETF${etfCount > 1 ? 's' : ''})</span>
                         </label>
                     </div>
@@ -103,7 +168,7 @@ class EtfOverlapUI {
             return;
         }
 
-        const selectedAccounts = allAccounts.filter(acc => selectedAccountIds.includes(acc.id));
+        const selectedAccounts = allAccounts.filter(acc => selectedAccountIds.includes(String(acc.id)));
 
         this.updateModalContent({
             content: '<div class="loader"></div><p>Analyse en cours... <br>Les calculs peuvent prendre quelques secondes.</p>',
