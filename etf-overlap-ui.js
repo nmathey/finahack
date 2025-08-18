@@ -13,9 +13,6 @@ class EtfOverlapUI {
      * Starts the process by showing the account selection modal.
      */
     async showAccountSelection() {
-        // Ensure Plotly is available for charting results later
-        this.injectScript(chrome.runtime.getURL('lib/plotly.min.js'));
-
         this.showModal({
             title: "Analyse de chevauchement d'ETFs",
             content: '<div class="loader"></div><p>Chargement de vos comptes...</p>',
@@ -442,13 +439,6 @@ class EtfOverlapUI {
         if (modal) {
             modal.style.display = 'none';
         }
-    }
-
-    injectScript(url) {
-        if (document.querySelector(`script[src="${url}"]`)) return;
-        const script = document.createElement('script');
-        script.src = url;
-        document.head.appendChild(script);
     }
 
     injectStyles() {

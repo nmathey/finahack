@@ -94,7 +94,7 @@ export async function handleMenuClick(info, tab) {
             // Injecter les scripts nécessaires en ordre
             chrome.scripting.executeScript({
                 target: { tabId },
-                files: ["etf-overlap-analyzer.js", "etf-overlap-ui.js"]
+                files: ["lib/plotly.min.js", "etf-overlap-analyzer.js", "etf-overlap-ui.js"]
             }, () => {
                 if (chrome.runtime.lastError) {
                     console.error("Erreur lors de l'injection des scripts:", chrome.runtime.lastError);
