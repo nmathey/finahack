@@ -17,7 +17,7 @@ class EtfOverlapUI {
         this.injectScript(chrome.runtime.getURL('lib/plotly.min.js'));
 
         this.showModal({
-            title: "Analyse de Chevauchement d'ETFs",
+            title: "Analyse de chevauchement d'ETFs",
             content: '<div class="loader"></div><p>Chargement de vos comptes...</p>',
             actions: ''
         });
@@ -33,30 +33,80 @@ class EtfOverlapUI {
 
             console.log('[etfOverlapUI] holdingsAccounts response:', holdingsAccounts);
 
-            // Normalize to an array of accounts (robust)
-            let accountsArray = [];
-            if (Array.isArray(holdingsAccounts)) {
-                accountsArray = holdingsAccounts;
-            } else if (holdingsAccounts && typeof holdingsAccounts === 'object') {
-                // prefer explicit array fields
-                if (Array.isArray(holdingsAccounts.accounts)) {
-                    accountsArray = holdingsAccounts.accounts;
-                } else if (Array.isArray(holdingsAccounts.data)) {
-                    accountsArray = holdingsAccounts.data;
-                } else if (holdingsAccounts.accounts && typeof holdingsAccounts.accounts === 'object') {
-                    // fallback: object indexed by keys
-                    accountsArray = Object.values(holdingsAccounts.accounts);
-                } else {
-                    // last resort: try object values of the root object
-                    accountsArray = Object.values(holdingsAccounts);
-                }
-            }
-            // ensure it's an array (coerce single account object into array)
-            if (!Array.isArray(accountsArray)) {
-                accountsArray = accountsArray ? [accountsArray] : [];
-            }
+            // Extract the real accounts array from many possible response shapes
+            const extractAccountsArray = (resp) => {
+                console.log('[extractAccountsArray] raw resp type:', typeof resp, 'isArray:', Array.isArray(resp), 'len:', resp && resp.length);
+                if (!resp) return [];
 
-            console.log('[etfOverlapUI] Initial accounts array (type:', typeof accountsArray, 'length:', accountsArray.length, '):', accountsArray);
+                // If top-level is array of payloads like [{ result: [...] }, ...] -> prefer flattening the results
+                if (Array.isArray(resp)) {
+                    if (resp.length === 1 && Array.isArray(resp[0]?.result)) {
+                        console.log('[extractAccountsArray] unwrapping resp[0].result length=', resp[0].result.length);
+                        return resp[0].result;
+                    }
+                    if (resp.every(item => item && Array.isArray(item.result))) {
+                        const flattened = resp.flatMap(item => item.result);
+                        console.log('[extractAccountsArray] flattened many .result arrays ->', flattened.length);
+                        return flattened;
+                    }
+                    // general array branch: try result/accounts then account-like items
+                    const flat = resp.flatMap(item => {
+                        if (!item) return [];
+                        if (Array.isArray(item.result)) return item.result;
+                        if (Array.isArray(item.accounts)) return item.accounts;
+                        if (item.id || item.name || item.securities) return [item];
+                        return [];
+                    });
+                    console.log('[extractAccountsArray] general array branch ->', flat.length);
+                    return flat;
+                }
+
+                // If object payload
+                if (typeof resp === 'object') {
+                    // if it has accounts which itself is an array of payloads, unwrap similarly
+                    if (Array.isArray(resp.accounts)) {
+                        const accs = resp.accounts;
+                        if (accs.length === 1 && Array.isArray(accs[0]?.result)) {
+                            console.log('[extractAccountsArray] unwrapping resp.accounts[0].result length=', accs[0].result.length);
+                            return accs[0].result;
+                        }
+                        if (accs.every(item => item && Array.isArray(item.result))) {
+                            const flattened = accs.flatMap(item => item.result);
+                            console.log('[extractAccountsArray] flattened resp.accounts result arrays ->', flattened.length);
+                            return flattened;
+                        }
+                        // fallback: resp.accounts already an array of account-like objects
+                        console.log('[extractAccountsArray] object.accounts length=', accs.length);
+                        return accs;
+                    }
+
+                    if (Array.isArray(resp.result)) {
+                        console.log('[extractAccountsArray] object.result length=', resp.result.length);
+                        return resp.result;
+                    }
+                    if (Array.isArray(resp.data)) {
+                        console.log('[extractAccountsArray] object.data length=', resp.data.length);
+                        return resp.data;
+                    }
+
+                    // try first array property
+                    const firstArray = Object.values(resp).find(v => Array.isArray(v));
+                    if (firstArray) {
+                        console.log('[extractAccountsArray] using first array property length=', firstArray.length);
+                        return firstArray;
+                    }
+
+                    // single account object -> wrap
+                    if (resp.id || resp.name || resp.securities) {
+                        return [resp];
+                    }
+                }
+
+                return [];
+            };
+
+            let accountsArray = extractAccountsArray(holdingsAccounts);
+            console.log('[etfOverlapUI] extracted accountsArray (type:', typeof accountsArray, 'length:', accountsArray.length, '):', accountsArray);
 
             // Normalize account shape (robust mapping of common keys)
             const normalizeAccount = (acc) => {
@@ -70,18 +120,43 @@ class EtfOverlapUI {
             };
             accountsArray = accountsArray.map(normalizeAccount);
             console.log('[etfOverlapUI] normalized accounts sample:', accountsArray.slice(0,5));
- 
-             if (!accountsArray || accountsArray.length === 0) {
-                 this.updateModalContent({ content: `<p>Erreur : Impossible de récupérer les comptes.</p><pre>${JSON.stringify(holdingsAccounts, null, 2)}</pre>` });
-                 return;
-             }
- 
+
+            // Diagnostic : afficher pour chaque compte les valeurs possibles du type de compte
+            console.log('[etfOverlapUI] diagnostic types:', accountsArray.map(a => ({
+                id: a?.id,
+                name: a?.name,
+                manual_type: a?.manual_type,
+                bank_account_type_account_type: a?.bank_account_type?.account_type,
+                contract_bank_account_type: a?.contract?.bank_account_type?.account_type,
+                acctType_field: a?.acctType,
+                acctType_normalized: (a?.acctType ?? a?.bank_account_type?.account_type ?? a?.contract?.bank_account_type?.account_type ?? a?.manual_type) ?? null
+            })));
+
+            // Robust isInvestmentAccount : accepte plusieurs formes et tolère variations
             const isInvestmentAccount = (acc) => {
-                console.log('[isInvestmentAccount] checking account object:', acc);
-                const acctType = acc?.acctType ?? acc?.bank_account_type?.account_type ?? acc?.account_type ?? acc?.type ?? acc?.accountType;
-                return typeof acctType === 'string' && acctType.toLowerCase() === 'investment';
+                if (!acc || typeof acc !== 'object') return false;
+                // candidates possibles où se trouve l'information
+                const candidates = [
+                    acc?.acctType,
+                    acc?.acct_type,
+                    acc?.account_type,
+                    acc?.bank_account_type?.account_type,
+                    acc?.contract?.bank_account_type?.account_type,
+                    acc?.manual_type,
+                    acc?.type,
+                    acc?.accountType
+                ].filter(v => v !== undefined && v !== null);
+
+                if (candidates.length === 0) {
+                    console.log('[isInvestmentAccount] no acct type candidates for', acc?.id || acc?.name || '(unknown)');
+                    return false;
+                }
+                const normalized = String(candidates[0]).toLowerCase();
+                console.log('[isInvestmentAccount] account', acc?.id || acc?.name || '(unknown)', 'candidates:', candidates, '-> normalized:', normalized);
+                // accept common synonyms
+                return normalized === 'investment' || normalized.includes('investment') || normalized.includes('compte_titres') || normalized.includes('stocks') || normalized.includes('broker') || normalized.includes('titres');
             };
- 
+
             // Normalize securities: return array of security objects (each with security_type and isin)
             const normalizeSecurities = (securities) => {
                 console.log('[normalizeSecurities] input:', securities);
@@ -116,15 +191,27 @@ class EtfOverlapUI {
                 return found;
             };
 
-            const stockAccounts = accountsArray.filter(acc => isInvestmentAccount(acc) && hasEtf(acc));
-
-            if (stockAccounts.length === 0) {
-                console.warn('[etfOverlapUI] Aucun compte d\'investissement contenant des ETFs trouvé. Exemples de comptes:', accountsArray.slice(0,5));
-                this.updateModalContent({ content: '<p>Aucun compte d\'investissement avec des ETFs n\'a été trouvé.</p><pre>' + JSON.stringify(accountsArray.slice(0,5), null, 2) + '</pre>' });
+            // two-step filtering: first investment accounts, then those containing ETFs
+            const stockAccounts = accountsArray.filter(acc => {
+                const isInv = isInvestmentAccount(acc);
+                return isInv;
+            });
+            console.log('[etfOverlapUI] après filtre "investment" -> count:', stockAccounts.length, 'exemples:', stockAccounts.slice(0,5));
+ 
+            const stockAccountsWithETF = stockAccounts.filter(acc => {
+                const has = hasEtf(acc);
+                console.log('[etfOverlapUI] hasEtf check for account:', acc?.name || acc?.id || '(unknown)', '=>', has);
+                return has;
+            });
+            console.log('[etfOverlapUI] après filtre "contains ETF" -> count:', stockAccountsWithETF.length, 'exemples:', stockAccountsWithETF.slice(0,5));
+ 
+            if (stockAccountsWithETF.length === 0) {
+                console.warn('[etfOverlapUI] Aucun compte d\'investissement contenant des ETFs trouvé. Exemples de comptes:', stockAccounts.slice(0,5));
+                this.updateModalContent({ content: '<p>Aucun compte d\'investissement avec des ETFs n\'a été trouvé.</p><pre>' + JSON.stringify(stockAccounts.slice(0,5), null, 2) + '</pre>' });
                 return;
             }
-
-            const accountsHtml = stockAccounts.map(account => {
+ 
+            const accountsHtml = stockAccountsWithETF.map(account => {
                 const secs = normalizeSecurities(account.securities);
                 const etfCount = secs.filter(s => typeof s?.security_type === 'string' && s.security_type.toLowerCase() === 'etf' && !!s.isin).length;
                 return `
@@ -147,7 +234,7 @@ class EtfOverlapUI {
 
             this.updateModalContent({ content: modalContent, actions: modalActions });
 
-            document.getElementById('start-analysis-btn').addEventListener('click', () => this.handleAnalysisStart(stockAccounts));
+            document.getElementById('start-analysis-btn').addEventListener('click', () => this.handleAnalysisStart(stockAccountsWithETF));
 
         } catch (error) {
             console.error("Error during account selection display:", error);
