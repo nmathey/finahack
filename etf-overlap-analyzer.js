@@ -38,11 +38,12 @@ class EtfOverlapAnalyzer {
      * @returns {Promise<Array<Object>>} The holdings data.
      */
     async getHoldingsData() {
-        console.log("⬇️ Fetching new ETF holdings data...");
+        console.log("⬇️ Fetching new ETF holdings data from", this.csvUrl);
         const response = await fetch(this.csvUrl);
         if (!response.ok) throw new Error(`Failed to fetch CSV: ${response.statusText}`);
         const csvText = await response.text();
         const parsedData = this.parseCsv(csvText);
+        console.log(`✅ Parsed ${parsedData.length} records from the holdings CSV.`);
         return parsedData;
     }
 
@@ -257,6 +258,22 @@ class EtfOverlapAnalyzer {
         console.log("🔬 Starting analysis for accounts:", selectedAccounts.map(a => a.name));
         const holdingsData = await this.getHoldingsData();
         const portfolioWeights = this.calculatePortfolioWeights(selectedAccounts);
+
+        // --- Start Diagnostic Logging ---
+        const userEtfIsins = Object.keys(portfolioWeights);
+        console.log(`Found ${userEtfIsins.length} unique ETFs in selected accounts:`, userEtfIsins);
+
+        const holdingsIsins = new Set(holdingsData.map(h => h.ETF_ISIN));
+        console.log(`The holdings file contains ${holdingsIsins.size} unique ETFs.`);
+
+        const foundIsins = userEtfIsins.filter(isin => holdingsIsins.has(isin));
+        const notFoundIsins = userEtfIsins.filter(isin => !holdingsIsins.has(isin));
+
+        console.log(`✅ ${foundIsins.length} of your ETFs were found in the holdings data:`, foundIsins);
+        if (notFoundIsins.length > 0) {
+            console.warn(`⚠️ ${notFoundIsins.length} of your ETFs were NOT FOUND in the holdings data and will be ignored:`, notFoundIsins);
+        }
+        // --- End Diagnostic Logging ---
 
         if (Object.keys(portfolioWeights).length < 2) {
             throw new Error("Veuillez sélectionner des comptes contenant au moins deux ETFs différents pour l'analyse.");
