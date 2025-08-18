@@ -34,28 +34,15 @@ class EtfOverlapAnalyzer {
     }
 
     /**
-     * Fetches and caches the ETF holdings data from the source CSV file.
+     * Fetches the ETF holdings data from the source CSV file.
      * @returns {Promise<Array<Object>>} The holdings data.
      */
     async getHoldingsData() {
-        const now = new Date().getTime();
-        const cachedData = await new Promise(resolve => {
-            chrome.storage.local.get(this.cacheKey, result => resolve(result[this.cacheKey]));
-        });
-        if (cachedData && (now - cachedData.timestamp < this.cacheDuration)) {
-            console.log("✅ ETF holdings data loaded from cache.");
-            return cachedData.data;
-        }
         console.log("⬇️ Fetching new ETF holdings data...");
         const response = await fetch(this.csvUrl);
         if (!response.ok) throw new Error(`Failed to fetch CSV: ${response.statusText}`);
         const csvText = await response.text();
         const parsedData = this.parseCsv(csvText);
-        const dataToCache = { timestamp: now, data: parsedData };
-        await new Promise(resolve => {
-            chrome.storage.local.set({ [this.cacheKey]: dataToCache }, resolve);
-        });
-        console.log("✅ ETF holdings data cached.");
         return parsedData;
     }
 
