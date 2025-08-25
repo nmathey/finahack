@@ -4,25 +4,27 @@
  */
 class EtfOverlapAnalyzer {
     constructor() {
-        this.csvUrl = 'https://raw.githubusercontent.com/DrekoDev/Etf-Holdings-Overlap-Analyzer/main/holdings_xd_processed.csv';
+        this.holdingsUrl = 'data/holdings_xd_processed.csv';
+        this.etfsUrl = 'data/etfs.csv';
         this.cacheKey = 'etfHoldingsDataCache';
         this.cacheDuration = 24 * 60 * 60 * 1000; // 24 hours
     }
 
     /**
-     * Parses a CSV string with a semicolon delimiter into an array of objects.
+     * Parses a CSV string into an array of objects.
      * @param {string} csvText The CSV string content.
+     * @param {string} delimiter The delimiter character (e.g., ';' or ',').
      * @returns {Array<Object>}
      */
-    parseCsv(csvText) {
+    parseCsv(csvText, delimiter = ';') {
         const lines = csvText.split('\n');
         if (lines.length === 0) return [];
-        const header = lines[0].split(';').map(h => h.trim().replace(/"/g, ''));
+        const header = lines[0].split(delimiter).map(h => h.trim().replace(/"/g, ''));
         const data = [];
         for (let i = 1; i < lines.length; i++) {
             const line = lines[i].trim();
             if (line) {
-                const values = line.split(';');
+                const values = line.split(delimiter);
                 const entry = {};
                 for (let j = 0; j < header.length; j++) {
                     entry[header[j]] = values[j] ? values[j].trim().replace(/"/g, '') : '';
@@ -34,17 +36,49 @@ class EtfOverlapAnalyzer {
     }
 
     /**
-     * Fetches the ETF holdings data from the source CSV file.
-     * @returns {Promise<Array<Object>>} The holdings data.
+     * Fetches the ETF ISIN mapping from the etfs.csv file.
+     * @returns {Promise<Map<string, string>>} A map of Ticker -> ISIN.
      */
-    async getHoldingsData() {
-        console.log("⬇️ Fetching new ETF holdings data from", this.csvUrl);
-        const response = await fetch(this.csvUrl);
+    async getEtfIsinMapping() {
+        console.log("⬇️ Fetching ETF ISIN mapping from", this.etfsUrl);
+        const response = await fetch(this.etfsUrl);
         if (!response.ok) throw new Error(`Failed to fetch CSV: ${response.statusText}`);
         const csvText = await response.text();
-        const parsedData = this.parseCsv(csvText);
-        console.log(`✅ Parsed ${parsedData.length} records from the holdings CSV.`);
-        return parsedData;
+        const etfData = this.parseCsv(csvText, ',');
+        const mapping = new Map();
+        for (const etf of etfData) {
+            if (etf.Symbol && etf.ISIN) {
+                mapping.set(etf.Symbol, etf.ISIN);
+            }
+        }
+        console.log(`✅ Parsed ${mapping.size} records from the etfs CSV.`);
+        return mapping;
+    }
+
+    /**
+     * Fetches the ETF holdings data from the source CSV file and enriches it with ISINs.
+     * @returns {Promise<Array<Object>>} The holdings data, with an `ETF_ISIN` property added.
+     */
+    async getHoldingsData() {
+        const isinMapping = await this.getEtfIsinMapping();
+
+        console.log("⬇️ Fetching new ETF holdings data from", this.holdingsUrl);
+        const response = await fetch(this.holdingsUrl);
+        if (!response.ok) throw new Error(`Failed to fetch CSV: ${response.statusText}`);
+        const csvText = await response.text();
+        const parsedData = this.parseCsv(csvText, ';');
+
+        // Add ETF_ISIN to each holding
+        const dataWithIsin = parsedData.map(holding => {
+            const isin = isinMapping.get(holding.ETF_Symbol);
+            if (isin) {
+                holding.ETF_ISIN = isin;
+            }
+            return holding;
+        });
+
+        console.log(`✅ Parsed ${dataWithIsin.length} records from the holdings CSV and added ISINs.`);
+        return dataWithIsin;
     }
 
     /**
