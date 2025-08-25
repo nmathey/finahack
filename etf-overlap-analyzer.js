@@ -40,8 +40,9 @@ class EtfOverlapAnalyzer {
      * @returns {Promise<Map<string, string>>} A map of Ticker -> ISIN.
      */
     async getEtfIsinMapping() {
-        console.log("⬇️ Fetching ETF ISIN mapping from", this.etfsUrl);
-        const response = await fetch(this.etfsUrl);
+        const url = chrome.runtime.getURL(this.etfsUrl);
+        console.log("⬇️ Fetching ETF ISIN mapping from", url);
+        const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to fetch CSV: ${response.statusText}`);
         const csvText = await response.text();
         const etfData = this.parseCsv(csvText, ',');
@@ -62,8 +63,9 @@ class EtfOverlapAnalyzer {
     async getHoldingsData() {
         const isinMapping = await this.getEtfIsinMapping();
 
-        console.log("⬇️ Fetching new ETF holdings data from", this.holdingsUrl);
-        const response = await fetch(this.holdingsUrl);
+        const url = chrome.runtime.getURL(this.holdingsUrl);
+        console.log("⬇️ Fetching new ETF holdings data from", url);
+        const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to fetch CSV: ${response.statusText}`);
         const csvText = await response.text();
         const parsedData = this.parseCsv(csvText, ';');
