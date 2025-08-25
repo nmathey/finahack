@@ -91,17 +91,44 @@ export async function handleMenuClick(info, tab) {
                 return;
             }
             const tabId = tabs[0].id;
-            // Injecter les scripts nécessaires en ordre
+
+            // Vérifier si les scripts sont déjà injectés pour éviter les erreurs de redéclaration
             chrome.scripting.executeScript({
                 target: { tabId },
-                files: ["lib/plotly.min.js", "etf-overlap-analyzer.js", "etf-overlap-ui.js"]
-            }, () => {
-                if (chrome.runtime.lastError) {
-                    console.error("Erreur lors de l'injection des scripts:", chrome.runtime.lastError);
+                func: () => {
+                    if (window.etfAnalysisScriptsInjected) {
+                        return true; // Déjà injecté
+                    }
+                    window.etfAnalysisScriptsInjected = true;
+                    return false; // Pas encore injecté
+                }
+            }, (injectionResults) => {
+                if (chrome.runtime.lastError || !injectionResults || !injectionResults.length) {
+                    console.error("Erreur lors de la vérification de l'injection:", chrome.runtime.lastError);
                     return;
                 }
-                // Envoyer un message au script injecté pour lui dire de démarrer
-                chrome.tabs.sendMessage(tabId, { action: "showEtfOverlapModal" });
+
+                const alreadyInjected = injectionResults[0].result;
+
+                if (alreadyInjected) {
+                    // Si les scripts sont déjà là, on affiche simplement le modal
+                    console.log("Scripts d'analyse déjà injectés. Affichage du modal.");
+                    chrome.tabs.sendMessage(tabId, { action: "showEtfOverlapModal" });
+                } else {
+                    // Sinon, on injecte les scripts pour la première fois
+                    console.log("Injection des scripts d'analyse...");
+                    chrome.scripting.executeScript({
+                        target: { tabId },
+                        files: ["lib/plotly.min.js", "etf-overlap-analyzer.js", "etf-overlap-ui.js"]
+                    }, () => {
+                        if (chrome.runtime.lastError) {
+                            console.error("Erreur lors de l'injection des scripts:", chrome.runtime.lastError);
+                            return;
+                        }
+                        // Une fois les scripts injectés, on affiche le modal
+                        chrome.tabs.sendMessage(tabId, { action: "showEtfOverlapModal" });
+                    });
+                }
             });
         });
     } else if (info.menuItemId === "deleteAllRealTokenFinary") {
