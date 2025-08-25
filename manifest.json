@@ -47,7 +47,9 @@
         "realt-viewer.js",
         "etf-overlap-analyzer.js",
         "etf-overlap-ui.js",
-        "lib/plotly.min.js"
+        "lib/plotly.min.js",
+        "data/etfs.csv",
+        "data/holdings_xd_processed.csv"
       ],
       "matches": ["<all_urls>"]
     }
