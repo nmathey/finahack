@@ -17,9 +17,11 @@ function flattenAssets(apiResponse) {
         
         if (typeSlug.includes('lifeinsurance')) envelopeType = 'av';
         else if (typeSlug.includes('pea')) envelopeType = 'pea';
+        else if (typeSlug.includes('pee')) envelopeType = 'pee';
         else if (typeSlug.includes('compte_titres') || typeSlug.includes('brokerage')) envelopeType = 'cto';
         else if (typeSlug.includes('savings') || typeSlug.includes('checking')) envelopeType = 'bank';
         else if (holding.manual_type === 'real_estate') envelopeType = 'direct_real_estate';
+        else if (holding.manual_type === 'scpi') envelopeType = 'scpi';
         else if (!holding.bank_account_type) envelopeType = 'crypto_wallet';
 
         const baseInfo = {
