@@ -84,6 +84,26 @@ export async function handleMenuClick(info, tab) {
         } catch (error) {
             console.error('Sync error:', error);
         }
+    } else if (info.menuItemId === "analyzeEtfOverlap") {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs.length === 0) {
+                console.error("Aucun onglet actif trouvé.");
+                return;
+            }
+            const tabId = tabs[0].id;
+            // Injecter les scripts nécessaires en ordre
+            chrome.scripting.executeScript({
+                target: { tabId },
+                files: ["etf-overlap-analyzer.js", "etf-overlap-ui.js"]
+            }, () => {
+                if (chrome.runtime.lastError) {
+                    console.error("Erreur lors de l'injection des scripts:", chrome.runtime.lastError);
+                    return;
+                }
+                // Envoyer un message au script injecté pour lui dire de démarrer
+                chrome.tabs.sendMessage(tabId, { action: "showEtfOverlapModal" });
+            });
+        });
     } else if (info.menuItemId === "deleteAllRealTokenFinary") {
         try {
             const realtSync = new RealTSync();
@@ -115,4 +135,35 @@ export async function handleMenuClick(info, tab) {
             console.error('Delete error:', error);
         }
     }
+    else if (info.menuItemId === "exportFlattenedAssets") {
+        // Open export popup with flag to export flattened assets
+        chrome.windows.create({
+            url: chrome.runtime.getURL("src/popup_export.html") + "?flattened=1",
+            type: "popup",
+            width: 500,
+            height: 400
+        });
+    }
 }
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message?.action === "GET_HOLDINGS_ACCOUNTS") {
+        (async () => {
+            try {
+                console.log('[background] GET_HOLDINGS_ACCOUNTS from', sender);
+                const finaryClient = new FinaryClient();
+                const raw = await finaryClient.getHoldingsAccounts();
+                console.log('[background] raw holdings:', raw);
+                let payload;
+                if (Array.isArray(raw)) payload = { accounts: raw };
+                else if (raw && raw.accounts) payload = raw;
+                else payload = { accounts: raw ? [raw] : [] };
+                sendResponse(payload);
+            } catch (err) {
+                console.error("Error getting holdings accounts (background):", err);
+                sendResponse({ error: err.message || String(err) });
+            }
+        })();
+        return true; // réponse asynchrone
+    }
+});
