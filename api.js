@@ -2,6 +2,8 @@
  * Classe client pour interagir avec l'API Finary.
  * Gère l'authentification, les requêtes API, la gestion des biens immobiliers, et la configuration utilisateur.
  */
+import { flattenAssets } from './src/asset-flattener.js';
+
 export class FinaryClient {
     /**
      * Initialise le client Finary.
@@ -284,6 +286,27 @@ export class FinaryClient {
         } catch (error) {
             console.error("❌ Error getting holdings accounts:", error.message);
             return null;
+        }
+    }
+
+    /**
+     * Récupère et aplatit les holdings accounts pour une organisation/membership donnés.
+     * Utilise `flattenAssets` pour produire une liste plate d'actifs.
+     * @returns {Promise<Array>} Liste d'actifs aplatis ou tableau vide en cas d'erreur.
+     */
+    async getFlattenedCurrentHoldingsAccounts(organizationID, membershipID) {
+        try {
+            const endpoint = `/organizations/${organizationID}/memberships/${membershipID}/holdings_accounts`;
+            const response = await this.apiRequest(endpoint);
+            if (!response) {
+                console.warn('No response from holdings_accounts endpoint');
+                return [];
+            }
+            // flattenAssets expects an object with a `result` array
+            return flattenAssets(response);
+        } catch (err) {
+            console.error('❌ Error getting flattened holdings accounts:', err);
+            return [];
         }
     }
 

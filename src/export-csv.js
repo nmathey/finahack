@@ -80,3 +80,56 @@ export async function exportFinaryHoldingsToCSV() {
         a.remove();
     }, 30000);
 }
+
+/**
+ * Exporte les assets aplatis (utilise flattenAssets via FinaryClient.getFlattenedCurrentHoldingsAccounts)
+ */
+export async function exportFlattenedAssetsToCSV() {
+    const finaryClient = new FinaryClient();
+
+    const membershipId = await finaryClient.getSelectedMembershipId();
+    const organizationId = await finaryClient.getSelectedOrganization();
+    if (!membershipId || !organizationId) {
+        alert("Impossible de récupérer les identifiants Finary.");
+        return;
+    }
+
+    const flattened = await finaryClient.getFlattenedCurrentHoldingsAccounts(organizationId, membershipId);
+    if (!flattened || !Array.isArray(flattened) || flattened.length === 0) {
+        alert("Aucun asset aplati trouvé.");
+        return;
+    }
+
+    // Générer le CSV depuis la structure aplatie
+    let csvString = "holdingId,accountName,institutionName,envelopeType,assetId,assetName,assetType,category,subcategory,currentValue,quantity,pnl_amount\n";
+    const addLine = (line) => { csvString += line; };
+
+    flattened.forEach(item => {
+        const line = [
+            item.holdingId ?? '',
+            (item.accountName || '').replace(/,/g, ' '),
+            (item.institutionName || '').replace(/,/g, ' '),
+            item.envelopeType ?? '',
+            item.id ?? '',
+            (item.name || '').replace(/,/g, ' '),
+            item.assetType ?? '',
+            item.category ?? '',
+            item.subcategory ?? '',
+            item.currentValue ?? '',
+            item.quantity ?? '',
+            item.pnl_amount ?? ''
+        ].join(',') + '\n';
+        addLine(line);
+    });
+
+    const a = document.createElement('a');
+    const date = new Date().toISOString().replaceAll(/-|:|Z/g, "").replace("T", "_").substr(0, 15);
+    a.download = `finary_flattened_${date}.csv`;
+    a.href = URL.createObjectURL(new Blob([csvString], { type: 'text/csv' }));
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+        URL.revokeObjectURL(a.href);
+        a.remove();
+    }, 30000);
+}

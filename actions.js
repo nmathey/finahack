@@ -135,6 +135,15 @@ export async function handleMenuClick(info, tab) {
             console.error('Delete error:', error);
         }
     }
+    else if (info.menuItemId === "exportFlattenedAssets") {
+        // Open export popup with flag to export flattened assets
+        chrome.windows.create({
+            url: chrome.runtime.getURL("src/popup_export.html") + "?flattened=1",
+            type: "popup",
+            width: 500,
+            height: 400
+        });
+    }
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
