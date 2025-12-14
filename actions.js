@@ -226,6 +226,15 @@ export async function handleMenuClick(info, tab) {
             console.error('Error preparing flattened cache:', err);
         }
     }
+    else if (info.menuItemId === "visualizeMyAssetType") {
+        // Open popup to visualize distribution by myAssetType
+        chrome.windows.create({
+            url: chrome.runtime.getURL("src/popup_myasset_distribution.html"),
+            type: "popup",
+            width: 900,
+            height: 700
+        });
+    }
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
