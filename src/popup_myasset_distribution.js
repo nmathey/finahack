@@ -82,11 +82,17 @@
       chartEl.innerHTML = '<div>Aucune donnée sélectionnée</div>';
       return;
     }
-      // Build hierarchy: root -> myAssetType (inner) -> category -> subcategory (outer)
+      // Build tree by full paths to avoid double-counting: root -> my -> (cat under my) -> (sub under cat)
       const rootId = 'root_total';
-      const myMap = new Map();   // myLabel -> value, parents:Set (root)
-      const catMap = new Map();  // catLabel -> value, parents:Set of myLabel
-      const subMap = new Map();  // subLabel -> value, parents:Set of catLabel
+      const ids = [];
+      const labels = [];
+      const parents = [];
+      const values = [];
+
+      // maps keyed by path id
+      const myVals = new Map(); // myId -> value
+      const catVals = new Map(); // catPathId (my::X::cat::Y) -> value
+      const subVals = new Map(); // subPathId (my::X::cat::Y::sub::Z) -> value
 
       items.forEach(it => {
         const my = it.myAssetType || 'ToBeDefined';
@@ -94,61 +100,39 @@
         const sub = it.subcategory || 'ToBeDefined';
         const v = Number(it.currentValue) || 0;
 
-        if(!myMap.has(my)) myMap.set(my, { value:0, parents: new Set() });
-        myMap.get(my).value += v;
-        myMap.get(my).parents.add(rootId);
+        const myId = `my::${my}`;
+        const catId = `cat::${my}::${cat}`;
+        const subId = `sub::${my}::${cat}::${sub}`;
 
-        if(!catMap.has(cat)) catMap.set(cat, { value:0, parents: new Set() });
-        catMap.get(cat).value += v;
-        catMap.get(cat).parents.add(my);
-
-        if(!subMap.has(sub)) subMap.set(sub, { value:0, parents: new Set() });
-        subMap.get(sub).value += v;
-        subMap.get(sub).parents.add(cat);
+        myVals.set(myId, (myVals.get(myId)||0) + v);
+        catVals.set(catId, (catVals.get(catId)||0) + v);
+        subVals.set(subId, (subVals.get(subId)||0) + v);
       });
 
-      const ids = [];
-      const labels = [];
-      const parents = [];
-      const values = [];
-
       // root
-      ids.push(rootId); labels.push('Total'); parents.push(''); values.push(
-        Array.from(myMap.values()).reduce((s,n)=>s+n.value,0)
-      );
+      const totalItems = Array.from(myVals.values()).reduce((s,n)=>s+n,0);
+      ids.push(rootId); labels.push('Total'); parents.push(''); values.push(totalItems);
 
-      // myAssetType nodes (children of root)
-      for(const [myLabel, obj] of myMap){
-        ids.push(`my::${myLabel}`);
-        labels.push(myLabel);
-        parents.push(rootId);
-        values.push(obj.value);
+      // my nodes
+      for(const [myId, v] of myVals){
+        ids.push(myId); labels.push(myId.replace(/^my::/, '')); parents.push(rootId); values.push(v);
       }
 
-      // category nodes: attach to myLabel if unique parent, else to root
-      for(const [catLabel, obj] of catMap){
-        const parentMys = Array.from(obj.parents);
-        let parentId = rootId;
-        if(parentMys.length === 1){
-          parentId = `my::${parentMys[0]}`;
-        }
-        ids.push(`cat::${catLabel}`);
-        labels.push(catLabel);
-        parents.push(parentId);
-        values.push(obj.value);
+      // cat nodes (under their my parent)
+      for(const [catId, v] of catVals){
+        const parts = catId.split('::');
+        const myId = `my::${parts[1]}`;
+        const label = parts.slice(2).join('::');
+        ids.push(catId); labels.push(label); parents.push(myId); values.push(v);
       }
 
-      // subcategory nodes: attach to category if unique parent, else to root
-      for(const [subLabel, obj] of subMap){
-        const parentCats = Array.from(obj.parents);
-        let parentId = rootId;
-        if(parentCats.length === 1){
-          parentId = `cat::${parentCats[0]}`;
-        }
-        ids.push(`sub::${subLabel}`);
-        labels.push(subLabel);
-        parents.push(parentId);
-        values.push(obj.value);
+      // sub nodes (under their cat parent)
+      for(const [subId, v] of subVals){
+        const parts = subId.split('::');
+        const myId = `my::${parts[1]}`;
+        const catId = `cat::${parts[1]}::${parts[2]}`;
+        const label = parts.slice(3).join('::');
+        ids.push(subId); labels.push(label); parents.push(catId); values.push(v);
       }
 
     // deterministic color generator for myAssetType
@@ -189,7 +173,10 @@
       type: 'sunburst', ids, labels, parents, values,
       branchvalues: 'total',
       marker: { colors },
-      hovertemplate: '%{label}: %{value:$,.2f}<extra></extra>'
+      // show numeric value (no currency) and percent of root in hover, plus percent displayed inside
+      hovertemplate: '%{label}: %{value:.2f} (%{percentRoot:.2%})<extra></extra>',
+      textinfo: 'label+percent entry',
+      insidetextorientation: 'radial'
     }];
     const layout = {height:420, margin:{t:20,b:20,l:20,r:20}};
     Plotly.newPlot(chartEl, data, layout, {displayModeBar:false});
