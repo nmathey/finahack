@@ -14,6 +14,25 @@
       renderAssets(arr);
     });
   }
+  // restore previously saved selection of assetIds
+  const LAST_SELECTION_KEY = 'popup_myasset_last_selection';
+  function restoreSelection(){
+    chrome.storage.local.get([LAST_SELECTION_KEY], (res)=>{
+      const sel = Array.isArray(res && res[LAST_SELECTION_KEY]) ? res[LAST_SELECTION_KEY] : [];
+      if(sel.length===0) return;
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.forEach((row, idx)=>{
+        const cb = row.querySelector('input[type=checkbox]');
+        const assetId = row.dataset.assetId || row.querySelectorAll('td')[1]?.textContent || '';
+        if(cb && sel.includes(assetId)) cb.checked = true;
+        else if(cb) cb.checked = false;
+      });
+      // update total/info display
+      const items = getSelectedAssets();
+      const total = items.reduce((s,it)=>s + (Number(it.currentValue)||0), 0);
+      info.textContent = `Montant total sélectionné: ${total.toLocaleString(undefined,{style:'currency',currency:'EUR'})}`;
+    });
+  }
 
   function renderAssets(items){
     tbody.innerHTML = '';
@@ -36,6 +55,8 @@
       tr.dataset.subcategory = it.subcategory || '';
       tbody.appendChild(tr);
     });
+      // after rendering, try to restore previous selection
+      restoreSelection();
   }
 
   function getSelectedAssets(){
@@ -61,74 +82,74 @@
       chartEl.innerHTML = '<div>Aucune donnée sélectionnée</div>';
       return;
     }
-    // Aggregate by label at each level to merge identical labels
-    const rootId = 'root_total';
-    const subMap = new Map(); // subLabel -> {value, parents:Set}
-    const catMap = new Map(); // catLabel -> {value, parents:Set of subLabel}
-    const myMap = new Map();  // myLabel -> {value, parents:Set of catLabel}
+      // Build hierarchy: root -> myAssetType (inner) -> category -> subcategory (outer)
+      const rootId = 'root_total';
+      const myMap = new Map();   // myLabel -> value, parents:Set (root)
+      const catMap = new Map();  // catLabel -> value, parents:Set of myLabel
+      const subMap = new Map();  // subLabel -> value, parents:Set of catLabel
 
-    items.forEach(it => {
-      const sub = it.subcategory || 'ToBeDefined';
-      const cat = it.category || 'ToBeDefined';
-      const my = it.myAssetType || 'ToBeDefined';
-      const v = Number(it.currentValue) || 0;
+      items.forEach(it => {
+        const my = it.myAssetType || 'ToBeDefined';
+        const cat = it.category || 'ToBeDefined';
+        const sub = it.subcategory || 'ToBeDefined';
+        const v = Number(it.currentValue) || 0;
 
-      if(!subMap.has(sub)) subMap.set(sub, { value:0, parents: new Set() });
-      subMap.get(sub).value += v;
-      subMap.get(sub).parents.add(rootId);
+        if(!myMap.has(my)) myMap.set(my, { value:0, parents: new Set() });
+        myMap.get(my).value += v;
+        myMap.get(my).parents.add(rootId);
 
-      if(!catMap.has(cat)) catMap.set(cat, { value:0, parents: new Set() });
-      catMap.get(cat).value += v;
-      catMap.get(cat).parents.add(sub);
+        if(!catMap.has(cat)) catMap.set(cat, { value:0, parents: new Set() });
+        catMap.get(cat).value += v;
+        catMap.get(cat).parents.add(my);
 
-      if(!myMap.has(my)) myMap.set(my, { value:0, parents: new Set() });
-      myMap.get(my).value += v;
-      myMap.get(my).parents.add(cat);
-    });
+        if(!subMap.has(sub)) subMap.set(sub, { value:0, parents: new Set() });
+        subMap.get(sub).value += v;
+        subMap.get(sub).parents.add(cat);
+      });
 
-    const ids = [];
-    const labels = [];
-    const parents = [];
-    const values = [];
+      const ids = [];
+      const labels = [];
+      const parents = [];
+      const values = [];
 
-    // root
-    ids.push(rootId); labels.push('Total'); parents.push(''); values.push(
-      Array.from(subMap.values()).reduce((s,n)=>s+n.value,0)
-    );
+      // root
+      ids.push(rootId); labels.push('Total'); parents.push(''); values.push(
+        Array.from(myMap.values()).reduce((s,n)=>s+n.value,0)
+      );
 
-    // subs (always parent=root)
-    for(const [subLabel, obj] of subMap){
-      ids.push(`sub::${subLabel}`);
-      labels.push(subLabel);
-      parents.push(rootId);
-      values.push(obj.value);
-    }
-
-    // categories: if category appears under a single subLabel, attach to that sub; otherwise attach to root
-    for(const [catLabel, obj] of catMap){
-      const parentSubs = Array.from(obj.parents);
-      let parentId = rootId;
-      if(parentSubs.length === 1){
-        parentId = `sub::${parentSubs[0]}`;
+      // myAssetType nodes (children of root)
+      for(const [myLabel, obj] of myMap){
+        ids.push(`my::${myLabel}`);
+        labels.push(myLabel);
+        parents.push(rootId);
+        values.push(obj.value);
       }
-      ids.push(`cat::${catLabel}`);
-      labels.push(catLabel);
-      parents.push(parentId);
-      values.push(obj.value);
-    }
 
-    // myAssetType: if appears under single category label, attach to that category; else attach to root
-    for(const [myLabel, obj] of myMap){
-      const parentCats = Array.from(obj.parents);
-      let parentId = rootId;
-      if(parentCats.length === 1){
-        parentId = `cat::${parentCats[0]}`;
+      // category nodes: attach to myLabel if unique parent, else to root
+      for(const [catLabel, obj] of catMap){
+        const parentMys = Array.from(obj.parents);
+        let parentId = rootId;
+        if(parentMys.length === 1){
+          parentId = `my::${parentMys[0]}`;
+        }
+        ids.push(`cat::${catLabel}`);
+        labels.push(catLabel);
+        parents.push(parentId);
+        values.push(obj.value);
       }
-      ids.push(`my::${myLabel}`);
-      labels.push(myLabel);
-      parents.push(parentId);
-      values.push(obj.value);
-    }
+
+      // subcategory nodes: attach to category if unique parent, else to root
+      for(const [subLabel, obj] of subMap){
+        const parentCats = Array.from(obj.parents);
+        let parentId = rootId;
+        if(parentCats.length === 1){
+          parentId = `cat::${parentCats[0]}`;
+        }
+        ids.push(`sub::${subLabel}`);
+        labels.push(subLabel);
+        parents.push(parentId);
+        values.push(obj.value);
+      }
 
     // deterministic color generator for myAssetType
     function colorForLabel(label){
@@ -149,6 +170,19 @@
       } else {
         colors.push('rgba(200,200,200,0.6)');
       }
+    }
+
+    // Ensure parent node values >= sum of direct children to avoid Plotly warnings
+    const idToIndex = new Map();
+    ids.forEach((id, i) => idToIndex.set(id, i));
+    const childrenSum = new Array(ids.length).fill(0);
+    parents.forEach((p, i) => {
+      if(!p) return;
+      const parentIdx = idToIndex.get(p);
+      if(parentIdx !== undefined) childrenSum[parentIdx] += values[i];
+    });
+    for(let i=0;i<ids.length;i++){
+      if(childrenSum[i] > values[i]) values[i] = childrenSum[i];
     }
 
     const data = [{
@@ -194,13 +228,34 @@
   });
   document.getElementById('visualize').addEventListener('click', ()=>{
     const items = getSelectedAssets();
+    console.log('[popup_myasset_distribution] visualize click, items:', items);
     const total = items.reduce((s,it)=>s + (Number(it.currentValue)||0), 0);
     info.textContent = `Montant total sélectionné: ${total.toLocaleString(undefined,{style:'currency',currency:'EUR'})}`;
+    // persist selection
+    try{ const selIds = items.map(i=>i.assetId).filter(Boolean); chrome.storage.local.set({ [LAST_SELECTION_KEY]: selIds }); }catch(e){console.warn('save selection failed', e);}
+    // clear previous chart
+    chartEl.innerHTML = '';
+    if(typeof Plotly === 'undefined'){
+      console.error('Plotly non défini');
+      chartEl.innerHTML = '<div>Plotly non chargé — vérifiez que `lib/plotly.min.js` est accessible.</div>';
+      return;
+    }
     try{
       drawSunburst(items);
     }catch(e){
       console.error('Erreur dessin sunburst', e);
-      chartEl.innerHTML = '<div>Erreur lors du rendu du graphique (voir console).</div>';
+      // fallback: aggregate by myAssetType and draw pie
+      try{
+        const agg = aggregateByMyAssetType(items);
+        if(agg && agg.length>0){
+          drawPie(agg);
+        } else {
+          chartEl.innerHTML = '<div>Aucune donnée pour dessiner le graphique.</div>';
+        }
+      }catch(e2){
+        console.error('Fallback pie failed', e2);
+        chartEl.innerHTML = '<div>Erreur lors du rendu du graphique (voir console).</div>';
+      }
     }
   });
 
