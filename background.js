@@ -7,8 +7,7 @@ const initializeMenus = () => {
     const menuItems = [
         { id: "exportFlattenedAssets", title: "Exporter assets aplatis (CSV)" },
         { id: "manageVirtualEnvelop", title: "Gérer myAssetType & virtual_envelop (assets)" },
-        { id: "visualizeMyAssetType", title: "Visualiser répartition par myAssetType" },
-        { id: "analyzeEtfOverlap", title: "Analyser l'overlap des ETFs" }
+        { id: "visualizeMyAssetType", title: "Visualiser répartition par myAssetType" }
     ];
     
     menuItems.forEach(item => {

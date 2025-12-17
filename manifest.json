@@ -45,8 +45,7 @@
         "token-input.js",
         "json_viewer_realt.html",
         "realt-viewer.js",
-        "etf-overlap-analyzer.js",
-        "etf-overlap-ui.js",
+        
         "lib/plotly.min.js"
       ],
       "matches": ["<all_urls>"]

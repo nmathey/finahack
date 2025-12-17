@@ -25,26 +25,6 @@ export async function handleMenuClick(info, tab) {
                 }
             });
         });
-    } else if (info.menuItemId === "analyzeEtfOverlap") {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (tabs.length === 0) {
-                console.error("Aucun onglet actif trouvé.");
-                return;
-            }
-            const tabId = tabs[0].id;
-            // Injecter les scripts nécessaires en ordre
-            chrome.scripting.executeScript({
-                target: { tabId },
-                files: ["etf-overlap-analyzer.js", "etf-overlap-ui.js"]
-            }, () => {
-                if (chrome.runtime.lastError) {
-                    console.error("Erreur lors de l'injection des scripts:", chrome.runtime.lastError);
-                    return;
-                }
-                // Envoyer un message au script injecté pour lui dire de démarrer
-                chrome.tabs.sendMessage(tabId, { action: "showEtfOverlapModal" });
-            });
-        });
     }
     else if (info.menuItemId === "exportFlattenedAssets") {
         // Open export popup with flag to export flattened assets
