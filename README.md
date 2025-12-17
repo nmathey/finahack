@@ -24,10 +24,6 @@ Pour le moment, l'extension est compatible avec Chrome et Edge.
 4. Passez en 'Mode développeur' en cochant la case correspondante en haut à droite de votre écran.
 5. Trois boutons devraient apparaître. Cliquez sur 'Charger l'extension non empaquetée...', puis choisissez le dossier contenant les codes sources et le précieux manifest.json.
 
-## Feuille de route / To Do List
-- [X] Fonctionnalité de synchronisation de son portefeuille RealT pour les biens immobiliers ❤️
-- Vos idées via une issue ;)
-
 ## Contributions!
 Les contributions sont les bienvenues ! Issues, PR, Documentation, tout est à prendre :)
 
