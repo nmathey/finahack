@@ -5,14 +5,10 @@ import { FinaryClient } from './api.js';
 const initializeMenus = () => {
     console.log("🛠️ Extension installée, création des menus...");
     const menuItems = [
-        { id: "getHoldingsAccounts", title: "Télécharger tout le portefeuille" },
         { id: "exportFlattenedAssets", title: "Exporter assets aplatis (CSV)" },
         { id: "manageVirtualEnvelop", title: "Gérer myAssetType & virtual_envelop (assets)" },
         { id: "visualizeMyAssetType", title: "Visualiser répartition par myAssetType" },
-        { id: "analyzeEtfOverlap", title: "Analyser l'overlap des ETFs" },
-        { id: "setRealTWallet", title: "Paramêtre pour RealT" },
-        { id: "syncRealTokenFinary", title: "Sync les RealToken sur Finary" },
-        { id: "deleteAllRealTokenFinary", title: "Supprimer tous les RealToken de Finary"}
+        { id: "analyzeEtfOverlap", title: "Analyser l'overlap des ETFs" }
     ];
     
     menuItems.forEach(item => {
