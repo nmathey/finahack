@@ -63,7 +63,7 @@ function flattenAssets(apiResponse) {
                     name = name.replace('REALTOKEN-', '').replace(/-/g, ' '); 
                 } 
                 // Logique Stablecoins (Exemple)
-                else if (['USDC', 'USDT', 'DAI'].includes(c.crypto.code)) {
+                else if (['USDC', 'USDT', 'EURC'].includes(c.crypto.code)) {
                     category = 'fiat';
                     subcategory = 'stablecoin';
                 }
