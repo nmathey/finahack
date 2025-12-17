@@ -1,0 +1,13 @@
+{
+  "name": "finahack",
+  "version": "0.3.0",
+  "description": "Une extension pour Finary",
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "prettier": "^2.0.0"
+  }
+}

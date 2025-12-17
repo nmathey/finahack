@@ -1,46 +1,70 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Répartition par myAssetType</title>
-  <style>
-    body{font-family:Arial,Helvetica,sans-serif;padding:12px}
-    .controls{margin-bottom:8px}
-    .btn{padding:8px 12px;margin-right:8px}
-    #assets-list{max-height:300px;overflow:auto;border:1px solid #ddd;padding:6px}
-    table{width:100%;border-collapse:collapse}
-    th,td{border:1px solid #eee;padding:6px;font-size:13px}
-    #chart{width:100%;height:420px}
-  </style>
-</head>
-<body>
-  <h2>Visualiser répartition par `myAssetType`</h2>
-  <div class="controls">
-    <button id="select-all" class="btn">Tout sélectionner</button>
-    <button id="clear-all" class="btn">Tout désélectionner</button>
-    <button id="visualize" class="btn">Visualiser (camembert)</button>
-    <span id="info"></span>
-  </div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Répartition par myAssetType</title>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        padding: 12px;
+      }
+      .controls {
+        margin-bottom: 8px;
+      }
+      .btn {
+        padding: 8px 12px;
+        margin-right: 8px;
+      }
+      #assets-list {
+        max-height: 300px;
+        overflow: auto;
+        border: 1px solid #ddd;
+        padding: 6px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border: 1px solid #eee;
+        padding: 6px;
+        font-size: 13px;
+      }
+      #chart {
+        width: 100%;
+        height: 420px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Visualiser répartition par `myAssetType`</h2>
+    <div class="controls">
+      <button id="select-all" class="btn">Tout sélectionner</button>
+      <button id="clear-all" class="btn">Tout désélectionner</button>
+      <button id="visualize" class="btn">Visualiser (camembert)</button>
+      <span id="info"></span>
+    </div>
 
-  <div id="assets-list">
-    <table id="assets-table">
-      <thead>
-        <tr>
-          <th></th>
-          <th>assetId</th>
-          <th>assetName</th>
-          <th>myAssetType</th>
-          <th>currentValue</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
+    <div id="assets-list">
+      <table id="assets-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>assetId</th>
+            <th>assetName</th>
+            <th>myAssetType</th>
+            <th>currentValue</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
 
-  <div id="chart"></div>
+    <div id="chart"></div>
 
-  <script src="../lib/plotly.min.js"></script>
-  <script src="popup_myasset_distribution.js"></script>
-</body>
+    <script src="../lib/plotly.min.js"></script>
+    <script src="popup_myasset_distribution.js"></script>
+  </body>
 </html>
