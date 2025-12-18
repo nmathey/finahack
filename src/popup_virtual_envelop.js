@@ -117,5 +117,47 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Export current table data as CSV
+  const exportBtn = document.getElementById('export-csv-btn');
+  function escapeCsv(value) {
+    if (value === null || value === undefined) return '';
+    const s = String(value);
+    if (s.includes('"') || s.includes(',') || s.includes('\n')) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  }
+
+  exportBtn.addEventListener('click', () => {
+    if (!Array.isArray(items) || items.length === 0) {
+      status.textContent = 'Aucune donnée à exporter';
+      setTimeout(() => status.textContent = '', 2000);
+      return;
+    }
+
+    const headers = [
+      'holdingId', 'accountName', 'institutionName', 'envelopeType',
+      'assetId', 'assetName', 'assetType', 'category', 'subcategory',
+      'currentValue', 'quantity', 'pnl_amount', 'myAssetType', 'virtual_envelop'
+    ];
+
+    const rows = items.map(it => {
+      return headers.map(h => escapeCsv(it[h] ?? '')).join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'virtual_envelop_export.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    status.textContent = 'Export généré';
+    setTimeout(() => status.textContent = '', 2000);
+  });
+
   loadAndRender();
 });
