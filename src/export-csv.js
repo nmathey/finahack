@@ -1,4 +1,4 @@
-import { FinaryClient } from '../api.js';
+import { FinaryClient } from './api.js';
 
 /**
  * Exporte tous les holdings Finary de l'utilisateur courant au format CSV.

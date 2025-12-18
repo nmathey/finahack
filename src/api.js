@@ -47,12 +47,19 @@ export class FinaryClient {
     for (let i = 0; i <= this.MAX_RETRIES; i++) {
       try {
         console.log(`🔄 Attempt ${i + 1}/${this.MAX_RETRIES + 1} to renew token...`);
-        const tabs = await new Promise((resolve) =>
-          chrome.tabs.query({ active: true, currentWindow: true }, resolve)
+        // Prefer a tab on finary.com where the content script is injected;
+        // fallback to the active tab if none found.
+        let tabs = await new Promise((resolve) =>
+          chrome.tabs.query({ url: '*://*.finary.com/*' }, resolve)
         );
+        if (!tabs || tabs.length === 0) {
+          tabs = await new Promise((resolve) =>
+            chrome.tabs.query({ active: true, currentWindow: true }, resolve)
+          );
+        }
 
-        if (!tabs[0]) {
-          throw new Error('No active tab found - Please open Finary in a tab');
+        if (!tabs || !tabs[0]) {
+          throw new Error('No suitable tab found - please open Finary in a tab');
         }
 
         const response = await new Promise((resolve, reject) => {
@@ -60,7 +67,7 @@ export class FinaryClient {
           chrome.tabs.sendMessage(tabs[0].id, { action: 'REQUEST_TOKEN' }, (response) => {
             clearTimeout(timeoutId);
             if (chrome.runtime.lastError) {
-              return reject(chrome.runtime.lastError);
+              return reject(new Error(`sendMessage failed: ${chrome.runtime.lastError.message || chrome.runtime.lastError}`));
             }
             resolve(response);
           });
