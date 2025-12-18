@@ -78,9 +78,9 @@ export async function handleMenuClick(info) {
               it.envelopeType ?? it.envelope_type ?? it.envelopeType ?? '',
             assetId: String(assetIdRaw),
             assetName: it.name ?? it.assetName ?? it.asset_name ?? '',
-            assetType: it.assetType ?? it.type ?? '',
-            category: it.category ?? '',
-            subcategory: it.subcategory ?? '',
+            assetClass: it.assetClass ?? it.category ?? '',
+            assetType: it.assetType ?? it.category ?? it.type ?? '',
+            assetVehicle: it.assetVehicle ?? it.subcategory ?? '',
             currentValue: it.currentValue ?? it.display_current_value ?? null,
             quantity: it.quantity ?? null,
             pnl_amount: it.pnl_amount ?? it.display_unrealized_pnl ?? null,
@@ -90,13 +90,11 @@ export async function handleMenuClick(info) {
 
       const merged = normalizedNew.map((n) => {
         const prev = existingMap.get(String(n.assetId));
-        const myAssetType =
-          prev && prev.myAssetType ? prev.myAssetType : n.assetType || '';
-        const virtual_envelop =
-          prev && prev.virtual_envelop
-            ? prev.virtual_envelop
-            : n.accountName || '';
-        return { ...n, myAssetType, virtual_envelop };
+        const assetType = prev?.assetType || n.assetType || '';
+        const assetClass = prev?.assetClass || n.assetClass || '';
+        const assetVehicle = prev?.assetVehicle || n.assetVehicle || '';
+        const virtual_envelop = prev?.virtual_envelop || n.accountName || '';
+        return { ...n, assetType, assetClass, assetVehicle, virtual_envelop };
       });
 
       // Persist merged cache with timestamp
@@ -115,10 +113,10 @@ export async function handleMenuClick(info) {
     } catch (err) {
       console.error('Error preparing flattened cache:', err);
     }
-  } else if (info.menuItemId === 'visualizeMyAssetType') {
-    // Open popup to visualize distribution by myAssetType
+  } else if (info.menuItemId === 'visualizeAssetType') {
+    // Open popup to visualize distribution by assetType
     chrome.windows.create({
-      url: chrome.runtime.getURL('src/popup_myasset_distribution.html'),
+      url: chrome.runtime.getURL('src/popup_assetType_distribution.html'),
       type: 'popup',
       width: 900,
       height: 700,

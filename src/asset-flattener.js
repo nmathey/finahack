@@ -38,12 +38,16 @@ function flattenAssets(apiResponse) {
     };
 
     // Helper pour ajouter un actif uniformisé
+    // Nouveau mapping:
+    // - `assetClass` : d'où vient la donnée (technique)
+    // - `assetType` : classe d'actif (métier)
+    // - `assetVehicle` : détail / véhicule
     const pushAsset = (
       id,
       name,
+      assetClass,
       assetType,
-      category,
-      subcategory,
+      assetVehicle,
       value,
       quantity,
       pnl
@@ -55,9 +59,13 @@ function flattenAssets(apiResponse) {
         ...baseInfo,
         id: id,
         name: name,
-        assetType: assetType, // D'où vient la donnée (technique)
-        category: category, // Classe d'actif (métier)
-        subcategory: subcategory, // Détail
+        assetClass: assetClass, // D'où vient la donnée (technique)
+        assetType: assetType, // Classe d'actif (métier)
+        assetVehicle: assetVehicle, // Détail / véhicule
+        // Marqueurs pour l'UI indiquant que ces champs sont éditables
+        assetClass_editable: true,
+        assetType_editable: true,
+        assetVehicle_editable: true,
         currentValue: value,
         quantity: quantity,
         pnl_amount: pnl,

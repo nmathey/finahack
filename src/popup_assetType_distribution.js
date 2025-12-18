@@ -1,4 +1,4 @@
-(function () {
+ (function () {
   const STORAGE_KEY = 'flattened_holdings_cache';
   const tbody = document.querySelector('#assets-table tbody');
   const info = document.getElementById('info');
@@ -61,14 +61,14 @@
       tr.innerHTML = `<td><input data-idx="${idx}" type="checkbox" checked></td>
         <td>${escapeHtml(it.assetId || '')}</td>
         <td>${escapeHtml(it.assetName || '')}</td>
-        <td>${escapeHtml(it.myAssetType || '')}</td>
+        <td>${escapeHtml(it.assetType || '')}</td>
         <td style="text-align:right">${formatCurrency(it.currentValue)}</td>`;
       // store raw numeric value and useful attrs to avoid parsing localized display
       tr.dataset.value = Number(it.currentValue) || 0;
       tr.dataset.assetId = it.assetId || '';
-      tr.dataset.myAssetType = it.myAssetType || '';
-      tr.dataset.category = it.category || '';
-      tr.dataset.subcategory = it.subcategory || '';
+      tr.dataset.assetType = it.assetType || '';
+      tr.dataset.assetClass = it.assetClass || '';
+      tr.dataset.assetVehicle = it.assetVehicle || '';
       tbody.appendChild(tr);
     });
     // after rendering, try to restore previous selection
@@ -91,12 +91,12 @@
             row.querySelectorAll('td')[1]?.textContent ||
             '',
           assetName: row.querySelectorAll('td')[2]?.textContent || '',
-          myAssetType:
-            row.dataset.myAssetType ||
+          assetType:
+            row.dataset.assetType ||
             row.querySelectorAll('td')[3]?.textContent ||
             '',
-          category: row.dataset.category || '',
-          subcategory: row.dataset.subcategory || '',
+          assetClass: row.dataset.assetClass || '',
+          assetVehicle: row.dataset.assetVehicle || '',
           currentValue: Number(row.dataset.value) || 0,
         };
       });
@@ -121,9 +121,9 @@
     const subVals = new Map(); // subPathId (my::X::cat::Y::sub::Z) -> value
 
     items.forEach((it) => {
-      const my = it.myAssetType || 'ToBeDefined';
-      const cat = it.category || 'ToBeDefined';
-      const sub = it.subcategory || 'ToBeDefined';
+      const my = it.assetType || 'ToBeDefined';
+      const cat = it.assetClass || 'ToBeDefined';
+      const sub = it.assetVehicle || 'ToBeDefined';
       const v = Number(it.currentValue) || 0;
 
       const myId = `my::${my}`;
@@ -172,7 +172,7 @@
       values.push(v);
     }
 
-    // deterministic color generator for myAssetType
+    // deterministic color generator for assetType
     function colorForLabel(label) {
       // simple hash to hue
       let h = 0;
@@ -184,7 +184,7 @@
       return `hsl(${h},60%,45%)`;
     }
 
-    // build colors array: color myAssetType nodes by their label, others neutral
+    // build colors array: color assetType nodes by their label, others neutral
     const colors = [];
     for (let i = 0; i < ids.length; i++) {
       const id = ids[i];
@@ -229,13 +229,13 @@
     Plotly.newPlot(chartEl, data, layout, { displayModeBar: false });
   }
 
-  function aggregateByMyAssetType(items) {
+  function aggregateByAssetType(items) {
     const map = {};
     items.forEach((it) => {
-      const key = it.myAssetType || 'ToBeDefined';
+      const key = it.assetType || 'ToBeDefined';
       map[key] = (map[key] || 0) + (Number(it.currentValue) || 0);
     });
-    return Object.keys(map).map((k) => ({ myAssetType: k, value: map[k] }));
+    return Object.keys(map).map((k) => ({ assetType: k, value: map[k] }));
   }
 
   function drawPie(agg) {
@@ -243,7 +243,7 @@
       chartEl.innerHTML = '<div>Aucune donnée sélectionnée</div>';
       return;
     }
-    const labels = agg.map((a) => a.myAssetType);
+    const labels = agg.map((a) => a.assetType);
     const values = agg.map((a) => a.value);
     const data = [
       {
@@ -277,7 +277,7 @@
   });
   document.getElementById('visualize').addEventListener('click', () => {
     const items = getSelectedAssets();
-    console.log('[popup_myasset_distribution] visualize click, items:', items);
+    console.log('[popup_assetType_distribution] visualize click, items:', items);
     const total = items.reduce(
       (s, it) => s + (Number(it.currentValue) || 0),
       0
@@ -305,9 +305,9 @@
       drawSunburst(items);
     } catch (e) {
       console.error('Erreur dessin sunburst', e);
-      // fallback: aggregate by myAssetType and draw pie
+      // fallback: aggregate by assetType and draw pie
       try {
-        const agg = aggregateByMyAssetType(items);
+        const agg = aggregateByAssetType(items);
         if (agg && agg.length > 0) {
           drawPie(agg);
         } else {

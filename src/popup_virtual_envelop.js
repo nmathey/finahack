@@ -10,42 +10,35 @@ document.addEventListener('DOMContentLoaded', () => {
     tbody.innerHTML = '';
     itemsToRender.forEach((it, idx) => {
       const tr = document.createElement('tr');
-      const values = [
-        it.holdingId || '',
-        it.accountName || '',
-        it.institutionName || '',
-        it.envelopeType || '',
-        it.assetId || '',
-        it.assetName || '',
-        it.assetType || '',
-        it.category || '',
-        it.subcategory || '',
-        it.currentValue ?? '',
-        it.quantity ?? '',
-        it.pnl_amount ?? '',
+      // Colonnes et quels champs sont éditables
+      const columns = [
+        'holdingId', 'accountName', 'institutionName', 'envelopeType',
+        'assetId', 'assetName', 'assetClass', 'assetType', 'assetVehicle',
+        'currentValue', 'quantity', 'pnl_amount'
       ];
 
-      // append non-editable columns
-      values.forEach((v) => {
+      const editableFields = new Set(['assetClass', 'assetType', 'assetVehicle', 'virtual_envelop']);
+
+      columns.forEach((col) => {
         const td = document.createElement('td');
-        td.textContent = v;
+        const value = it[col];
+        if (editableFields.has(col)) {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = value || '';
+          input.dataset.idx = idx;
+          input.dataset.field = col;
+          input.addEventListener('input', (e) => {
+            items[e.target.dataset.idx][e.target.dataset.field] = e.target.value;
+          });
+          td.appendChild(input);
+        } else {
+          td.textContent = value ?? '';
+        }
         tr.appendChild(td);
       });
 
-      // myAssetType editable
-      const tdMy = document.createElement('td');
-      const inputMy = document.createElement('input');
-      inputMy.type = 'text';
-      inputMy.value = it.myAssetType || '';
-      inputMy.dataset.idx = idx;
-      inputMy.dataset.field = 'myAssetType';
-      inputMy.addEventListener('input', (e) => {
-        items[e.target.dataset.idx].myAssetType = e.target.value;
-      });
-      tdMy.appendChild(inputMy);
-      tr.appendChild(tdMy);
-
-      // virtual_envelop editable
+      // virtual_envelop editable (col placed after the data columns)
       const tdVirtual = document.createElement('td');
       const inputVirtual = document.createElement('input');
       inputVirtual.type = 'text';
@@ -68,16 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
       items = Array.isArray(res.flattened_holdings_cache)
         ? res.flattened_holdings_cache
         : [];
-      // Migration: ensure `myAssetType` exists and `virtual_envelop` defaults to accountName when missing
+      // Migration: ensure `virtual_envelop` defaults to accountName when missing
       let changed = false;
       items = items.map((it) => {
         const copy = { ...it };
-        // ensure myAssetType exists (fallback to assetType)
-        if (!copy.myAssetType && (copy.assetType || copy.assetType === '')) {
-          copy.myAssetType = copy.assetType || '';
-          changed = changed || copy.myAssetType !== it.myAssetType;
-        }
-        // ensure virtual_envelop uses accountName when missing or placeholder
         if (!copy.virtual_envelop || copy.virtual_envelop === 'ToBeDefined') {
           copy.virtual_envelop = copy.accountName || '';
           changed = changed || copy.virtual_envelop !== it.virtual_envelop;
@@ -142,8 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const headers = [
       'holdingId', 'accountName', 'institutionName', 'envelopeType',
-      'assetId', 'assetName', 'assetType', 'category', 'subcategory',
-      'currentValue', 'quantity', 'pnl_amount', 'myAssetType', 'virtual_envelop'
+      'assetId', 'assetName', 'assetClass', 'assetType', 'assetVehicle',
+      'currentValue', 'quantity', 'pnl_amount', 'virtual_envelop'
     ];
 
     const rows = items.map(it => {
