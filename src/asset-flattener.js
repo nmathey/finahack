@@ -83,7 +83,6 @@ function flattenAssets(apiResponse) {
         if (c.crypto.code && c.crypto.code.startsWith('REALTOKEN')) {
           category = 'real_estate';
           subcategory = 'tokenized';
-          name = name.replace('REALTOKEN-', '').replace(/-/g, ' ');
         }
         // Logique Stablecoins (Exemple)
         else if (['USDC', 'USDT', 'EURC'].includes(c.crypto.code)) {
