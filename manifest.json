@@ -23,10 +23,7 @@
     "128": "extension_icon128.png"
   },
   "host_permissions": [
-    "*://*.finary.com/*",
-    "https://api.realtoken.community/*",
-    "https://blockscout.com/*",
-    "https://api.vfhome.fr/*"
+    "*://*.finary.com/*"
   ],
   "content_scripts": [
     {
@@ -39,13 +36,6 @@
       "resources": [
         "src/export-csv.js",
         "src/injected.js",
-        "src/consolidateAssets.js",
-        "src/add_real_estate.js",
-        "token-input.html",
-        "token-input.js",
-        "json_viewer_realt.html",
-        "realt-viewer.js",
-
         "lib/plotly.min.js"
       ],
       "matches": ["<all_urls>"]
