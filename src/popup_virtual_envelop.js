@@ -22,11 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
         it.subcategory || '',
         it.currentValue ?? '',
         it.quantity ?? '',
-        it.pnl_amount ?? ''
+        it.pnl_amount ?? '',
       ];
 
       // append non-editable columns
-      values.forEach(v => {
+      values.forEach((v) => {
         const td = document.createElement('td');
         td.textContent = v;
         tr.appendChild(td);
@@ -65,20 +65,22 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadAndRender() {
     status.textContent = 'Chargement...';
     chrome.storage.local.get('flattened_holdings_cache', (res) => {
-      items = Array.isArray(res.flattened_holdings_cache) ? res.flattened_holdings_cache : [];
+      items = Array.isArray(res.flattened_holdings_cache)
+        ? res.flattened_holdings_cache
+        : [];
       // Migration: ensure `myAssetType` exists and `virtual_envelop` defaults to accountName when missing
       let changed = false;
-      items = items.map(it => {
+      items = items.map((it) => {
         const copy = { ...it };
         // ensure myAssetType exists (fallback to assetType)
         if (!copy.myAssetType && (copy.assetType || copy.assetType === '')) {
           copy.myAssetType = copy.assetType || '';
-          changed = changed || (copy.myAssetType !== it.myAssetType);
+          changed = changed || copy.myAssetType !== it.myAssetType;
         }
         // ensure virtual_envelop uses accountName when missing or placeholder
         if (!copy.virtual_envelop || copy.virtual_envelop === 'ToBeDefined') {
           copy.virtual_envelop = copy.accountName || '';
-          changed = changed || (copy.virtual_envelop !== it.virtual_envelop);
+          changed = changed || copy.virtual_envelop !== it.virtual_envelop;
         }
         return copy;
       });
@@ -94,26 +96,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   forceRefreshBtn.addEventListener('click', () => {
     status.textContent = 'Forcing refresh...';
-    chrome.runtime.sendMessage({ action: 'FORCE_REFRESH_FLATTENED' }, (resp) => {
-      if (chrome.runtime.lastError) {
-        status.textContent = 'Erreur: ' + chrome.runtime.lastError.message;
-        return;
+    chrome.runtime.sendMessage(
+      { action: 'FORCE_REFRESH_FLATTENED' },
+      (resp) => {
+        if (chrome.runtime.lastError) {
+          status.textContent = 'Erreur: ' + chrome.runtime.lastError.message;
+          return;
+        }
+        if (resp?.error) {
+          status.textContent = 'Erreur: ' + resp.error;
+          return;
+        }
+        status.textContent = `Refresh OK (${resp.count} items)`;
+        // reload view from storage
+        setTimeout(() => loadAndRender(), 300);
       }
-      if (resp?.error) {
-        status.textContent = 'Erreur: ' + resp.error;
-        return;
-      }
-      status.textContent = `Refresh OK (${resp.count} items)`;
-      // reload view from storage
-      setTimeout(() => loadAndRender(), 300);
-    });
+    );
   });
 
   saveBtn.addEventListener('click', () => {
     // Save the in-memory items array (which was updated by inputs)
     chrome.storage.local.set({ flattened_holdings_cache: items }, () => {
       status.textContent = 'Enregistré';
-      setTimeout(() => status.textContent = '', 2000);
+      setTimeout(() => (status.textContent = ''), 2000);
     });
   });
 

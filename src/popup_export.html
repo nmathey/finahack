@@ -1,63 +1,63 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <title>Exporter mon portefeuille Finary</title>
-  <style>
-    body {
-      background: #23272e;
-      color: #d4d4d4;
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      min-width: 350px;
-      min-height: 200px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-    h2 {
-      margin-top: 24px;
-      margin-bottom: 18px;
-      font-size: 1.3em;
-      color: #F1C086;
-      letter-spacing: 1px;
-    }
-    #export-csv-btn {
-      background: linear-gradient(90deg,#000,#F1C086);
-      color: #23272e;
-      border: none;
-      border-radius: 8px;
-      padding: 12px 28px;
-      font-size: 1.1em;
-      font-weight: bold;
-      cursor: pointer;
-      margin-bottom: 18px;
-      transition: background 0.2s;
-    }
-    #export-csv-btn:hover {
-      background: linear-gradient(90deg,#F1C086,#000);
-      color: #fff;
-    }
-    #status {
-      background: #222;
-      color: #F1C086;
-      border-radius: 6px;
-      padding: 10px 14px;
-      min-height: 32px;
-      width: 90%;
-      margin: 0 auto 18px auto;
-      font-size: 1em;
-      text-align: center;
-      word-break: break-word;
-    }
-  </style>
-</head>
-<body>
-  <h2>Exporter mon portefeuille Finary</h2>
-  <button id="export-csv-btn">Télécharger le CSV</button>
-  <div id="status"></div>
-  <script src="popup_export.js" type="module"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Exporter mon portefeuille Finary</title>
+    <style>
+      body {
+        background: #23272e;
+        color: #d4d4d4;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        min-width: 350px;
+        min-height: 200px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      h2 {
+        margin-top: 24px;
+        margin-bottom: 18px;
+        font-size: 1.3em;
+        color: #f1c086;
+        letter-spacing: 1px;
+      }
+      #export-csv-btn {
+        background: linear-gradient(90deg, #000, #f1c086);
+        color: #23272e;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 28px;
+        font-size: 1.1em;
+        font-weight: bold;
+        cursor: pointer;
+        margin-bottom: 18px;
+        transition: background 0.2s;
+      }
+      #export-csv-btn:hover {
+        background: linear-gradient(90deg, #f1c086, #000);
+        color: #fff;
+      }
+      #status {
+        background: #222;
+        color: #f1c086;
+        border-radius: 6px;
+        padding: 10px 14px;
+        min-height: 32px;
+        width: 90%;
+        margin: 0 auto 18px auto;
+        font-size: 1em;
+        text-align: center;
+        word-break: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Exporter mon portefeuille Finary</h2>
+    <button id="export-csv-btn">Télécharger le CSV</button>
+    <div id="status"></div>
+    <script src="popup_export.js" type="module"></script>
+  </body>
 </html>

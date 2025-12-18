@@ -1,4 +1,4 @@
-import { FinaryClient } from "./api.js";
+import { FinaryClient } from "./src/api.js";
 
 export async function handleMenuClick(info, tab) {
     const finaryClient = new FinaryClient();

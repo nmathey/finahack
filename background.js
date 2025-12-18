@@ -1,5 +1,5 @@
 import { handleMenuClick } from './actions.js';
-import { FinaryClient } from './api.js';
+import { FinaryClient } from './src/api.js';
 
 // Initialize context menus
 const initializeMenus = () => {
