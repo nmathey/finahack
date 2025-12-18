@@ -5,7 +5,6 @@ import { FinaryClient } from './src/api.js';
 const initializeMenus = () => {
     console.log("🛠️ Extension installée, création des menus...");
     const menuItems = [
-        { id: "exportFlattenedAssets", title: "Exporter assets aplatis (CSV)" },
         { id: "manageVirtualEnvelop", title: "Gérer myAssetType & virtual_envelop (assets)" },
         { id: "visualizeMyAssetType", title: "Visualiser répartition par myAssetType" }
     ];

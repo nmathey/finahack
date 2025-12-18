@@ -7,35 +7,7 @@ export async function handleMenuClick(info, tab) {
         console.error("Token de session non disponible");
         return;
     }
-    if (info.menuItemId === "showAssetsSummary") {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (tabs.length === 0) {
-                console.error("Aucun onglet actif trouvé.");
-                return;
-            }
-            
-            chrome.scripting.executeScript({
-                target: { tabId: tabs[0].id },
-                files: ["consolidateAssets.js"]
-            }, () => {
-                if (chrome.runtime.lastError) {
-                    console.error("Erreur lors de l'injection du script:", chrome.runtime.lastError);
-                } else {
-                    chrome.tabs.sendMessage(tabs[0].id, { action: "openAssetsModal" });
-                }
-            });
-        });
-    }
-    else if (info.menuItemId === "exportFlattenedAssets") {
-        // Open export popup with flag to export flattened assets
-        chrome.windows.create({
-            url: chrome.runtime.getURL("src/popup_export.html") + "?flattened=1",
-            type: "popup",
-            width: 500,
-            height: 400
-        });
-    }
-    else if (info.menuItemId === "manageVirtualEnvelop") {
+    if (info.menuItemId === "manageVirtualEnvelop") {
         try {
             const membershipId = await finaryClient.getSelectedMembershipId();
             const organizationId = await finaryClient.getSelectedOrganization();

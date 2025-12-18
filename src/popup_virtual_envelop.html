@@ -1,70 +1,51 @@
 <!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Gérer myAssetType & virtual_envelop</title>
-    <style>
-      body {
-        font-family: Arial, Helvetica, sans-serif;
-        padding: 12px;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      th,
-      td {
-        border: 1px solid #ddd;
-        padding: 6px;
-        font-size: 13px;
-      }
-      th {
-        background: #f4f4f4;
-      }
-      input[type='text'] {
-        width: 100%;
-      }
-      .controls {
-        margin: 8px 0;
-      }
-      .btn {
-        padding: 8px 12px;
-        margin-right: 8px;
-      }
-    </style>
-  </head>
-  <body>
-    <h2>Gérer myAssetType & virtual_envelop (assets aplatis)</h2>
-    <div class="controls">
-      <button id="reload-btn" class="btn">Recharger cache</button>
-      <button id="force-refresh-btn" class="btn">Force refresh</button>
-      <button id="save-btn" class="btn">Enregistrer</button>
-      <span id="status"></span>
-    </div>
-    <div style="max-height: 70vh; overflow: auto">
-      <table id="assets-table">
-        <thead>
-          <tr>
-            <th>holdingId</th>
-            <th>accountName</th>
-            <th>institutionName</th>
-            <th>envelopeType</th>
-            <th>assetId</th>
-            <th>assetName</th>
-            <th>assetType</th>
-            <th>category</th>
-            <th>subcategory</th>
-            <th>currentValue</th>
-            <th>quantity</th>
-            <th>pnl_amount</th>
-            <th>myAssetType (editable)</th>
-            <th>virtual_envelop (editable)</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-    <script src="popup_virtual_envelop.js"></script>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gérer myAssetType & virtual_envelop</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;padding:12px}
+    table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid #ddd;padding:6px;font-size:13px}
+    th{background:#f4f4f4}
+    input[type=text]{width:100%}
+    .controls{margin:8px 0}
+    .btn{padding:8px 12px;margin-right:8px}
+  </style>
+</head>
+<body>
+  <h2>Gérer myAssetType & virtual_envelop (assets aplatis)</h2>
+  <div class="controls">
+    <button id="reload-btn" class="btn">Recharger cache</button>
+    <button id="force-refresh-btn" class="btn">Force refresh</button>
+    <button id="save-btn" class="btn">Enregistrer</button>
+    <button id="export-csv-btn" class="btn">Exporter CSV</button>
+    <span id="status"></span>
+  </div>
+  <div style="max-height:70vh;overflow:auto">
+    <table id="assets-table">
+      <thead>
+        <tr>
+          <th>holdingId</th>
+          <th>accountName</th>
+          <th>institutionName</th>
+          <th>envelopeType</th>
+          <th>assetId</th>
+          <th>assetName</th>
+          <th>assetType</th>
+          <th>category</th>
+          <th>subcategory</th>
+          <th>currentValue</th>
+          <th>quantity</th>
+          <th>pnl_amount</th>
+          <th>myAssetType (editable)</th>
+          <th>virtual_envelop (editable)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <script src="popup_virtual_envelop.js"></script>
+</body>
 </html>
