@@ -38,10 +38,6 @@ function flattenAssets(apiResponse) {
     };
 
     // Helper pour ajouter un actif uniformisé
-    // Nouveau mapping:
-    // - `assetClass` : d'où vient la donnée (technique)
-    // - `assetType` : classe d'actif (métier)
-    // - `assetVehicle` : détail / véhicule
     const pushAsset = (
       id,
       name,
@@ -59,9 +55,9 @@ function flattenAssets(apiResponse) {
         ...baseInfo,
         id: id,
         name: name,
-        assetClass: assetClass, // D'où vient la donnée (technique)
-        assetType: assetType, // Classe d'actif (métier)
-        assetVehicle: assetVehicle, // Détail / véhicule
+        assetClass: assetClass, 
+        assetType: assetType, 
+        assetVehicle: assetVehicle,
         // Marqueurs pour l'UI indiquant que ces champs sont éditables
         assetClass_editable: true,
         assetType_editable: true,
@@ -72,24 +68,12 @@ function flattenAssets(apiResponse) {
       });
     };
 
-    // --- 2. Traitement des CRYPTOS (Logique RealT incluse) ---
+    // --- 2. Traitement des CRYPTOS ---
     if (holding.cryptos) {
       holding.cryptos.forEach((c) => {
         let category = 'crypto';
         let subcategory = 'coin';
         let name = c.crypto.name || c.crypto.code;
-
-        // Logique RealT
-        if (c.crypto.code && c.crypto.code.startsWith('REALTOKEN')) {
-          category = 'real_estate';
-          subcategory = 'tokenized';
-        }
-        // Logique Stablecoins (Exemple)
-        else if (['USDC', 'USDT', 'EURC'].includes(c.crypto.code)) {
-          category = 'fiat';
-          subcategory = 'stablecoin';
-        }
-
         pushAsset(
           c.id,
           name,
