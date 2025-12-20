@@ -36,7 +36,10 @@
       "resources": [
         "src/export-csv.js",
         "src/injected.js",
-        "lib/plotly.min.js"
+        "lib/plotly.min.js",
+        "src/compact-mode.js",
+        "src/compact-mode.css",
+        "src/goal-tracking.js"
       ],
       "matches": ["<all_urls>"]
     }

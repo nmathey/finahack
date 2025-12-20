@@ -1,0 +1,27 @@
+/* FinaHack - Compact Mode */
+
+/* Reduce padding and margins on cards */
+.compact-mode ._1azjvrp5,
+.compact-mode .finary-card {
+  padding: 5px !important;
+  margin-bottom: 5px !important;
+}
+
+/* Reduce height of table rows */
+.compact-mode .MuiTableRow-root,
+.compact-mode .table-row {
+  height: 30px !important;
+}
+
+/* Reduce font size in table cells */
+.compact-mode .MuiTableCell-root,
+.compact-mode .value-cell {
+  font-size: 12px !important;
+  padding: 4px !important;
+}
+
+/* Reduce padding on various other elements */
+.compact-mode .MuiCardContent-root,
+.compact-mode .content-container {
+  padding: 8px !important;
+}

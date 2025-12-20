@@ -77,3 +77,19 @@ async function checkForClerkSession() {
 
 // Start the script
 initialize();
+
+// Load and initialize the compact mode feature
+const script = document.createElement('script');
+script.src = chrome.runtime.getURL('src/compact-mode.js');
+script.onload = () => {
+  window.initCompactMode();
+};
+document.head.appendChild(script);
+
+// Load and initialize the goal tracking feature
+const goalTrackingScript = document.createElement('script');
+goalTrackingScript.src = chrome.runtime.getURL('src/goal-tracking.js');
+goalTrackingScript.onload = () => {
+  window.initGoalTracking();
+};
+document.head.appendChild(goalTrackingScript);
