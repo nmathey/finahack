@@ -1,4 +1,5 @@
 import { FinaryClient } from './api.js';
+import { getTopMovers } from './top_movers_core.js';
 
 export async function handleMenuClick(info) {
   const finaryClient = new FinaryClient();
@@ -120,6 +121,17 @@ export async function handleMenuClick(info) {
       type: 'popup',
       width: 900,
       height: 700,
+    });
+  } else if (info.menuItemId === 'showTopMovers') {
+    getTopMovers().then((data) => {
+      chrome.storage.local.set({ topMoversData: data }, () => {
+        chrome.windows.create({
+          url: chrome.runtime.getURL('src/popup_top_movers.html'),
+          type: 'popup',
+          width: 800,
+          height: 600,
+        });
+      });
     });
   }
 }

@@ -1,11 +1,19 @@
 import { handleMenuClick } from './actions.js';
 import { FinaryClient } from './api.js';
+import { getTopMovers } from './top_movers_core.js';
 
 const initializeMenus = () => {
   console.log('🛠️ Extension installed, creating menus...');
   const menuItems = [
-    { id: 'manageVirtualEnvelop', title: 'Manage assetType & virtual_envelop (assets)' },
-    { id: 'visualizeAssetType', title: 'Visualize distribution by assetType' },
+    {
+      id: 'manageVirtualEnvelop',
+      title: 'Manage myAssetType & virtual_envelop (assets)',
+    },
+    {
+      id: 'visualizeMyAssetType',
+      title: 'Visualize distribution by myAssetType',
+    },
+    { id: 'showTopMovers', title: 'Show Top Movers' },
   ];
 
   menuItems.forEach((item) => {
@@ -25,23 +33,33 @@ const handleForceRefresh = async () => {
     throw new Error('Missing organization or membership');
   }
 
-  const fetched = await finaryClient.getFlattenedCurrentHoldingsAccounts(organizationId, membershipId);
+  const fetched = await finaryClient.getFlattenedCurrentHoldingsAccounts(
+    organizationId,
+    membershipId
+  );
   if (!fetched || !Array.isArray(fetched)) {
     throw new Error('Empty fetched flattened assets');
   }
 
-  const { flattened_holdings_cache: existingArr = [] } = await new Promise((res) =>
-    chrome.storage.local.get('flattened_holdings_cache', res)
+  const { flattened_holdings_cache: existingArr = [] } = await new Promise(
+    (res) => chrome.storage.local.get('flattened_holdings_cache', res)
   );
-  const existingMap = new Map(existingArr.map((it) => [String(it.assetId ?? it.id ?? it.holdingId ?? ''), it]));
+  const existingMap = new Map(
+    existingArr.map((it) => [
+      String(it.assetId ?? it.id ?? it.holdingId ?? ''),
+      it,
+    ])
+  );
 
   const normalized = fetched.map((it) => {
     const assetIdRaw = it.id ?? it.assetId ?? it.asset_id ?? '';
     return {
       holdingId: it.holdingId ?? it.holding_id ?? it.holdingId ?? '',
       accountName: it.accountName ?? it.account_name ?? it.accountName ?? '',
-      institutionName: it.institutionName ?? it.institution_name ?? it.institutionName ?? '',
-      envelopeType: it.envelopeType ?? it.envelope_type ?? it.envelopeType ?? '',
+      institutionName:
+        it.institutionName ?? it.institution_name ?? it.institutionName ?? '',
+      envelopeType:
+        it.envelopeType ?? it.envelope_type ?? it.envelopeType ?? '',
       assetId: String(assetIdRaw),
       assetName: it.name ?? it.assetName ?? it.asset_name ?? '',
         assetClass: it.assetClass ?? it.category ?? '',

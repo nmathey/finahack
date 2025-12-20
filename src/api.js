@@ -46,7 +46,9 @@ export class FinaryClient {
   async requestNewToken() {
     for (let i = 0; i <= this.MAX_RETRIES; i++) {
       try {
-        console.log(`🔄 Attempt ${i + 1}/${this.MAX_RETRIES + 1} to renew token...`);
+        console.log(
+          `🔄 Attempt ${i + 1}/${this.MAX_RETRIES + 1} to renew token...`
+        );
         // Prefer a tab on finary.com where the content script is injected;
         // fallback to the active tab if none found.
         let tabs = await new Promise((resolve) =>
@@ -59,18 +61,31 @@ export class FinaryClient {
         }
 
         if (!tabs || !tabs[0]) {
-          throw new Error('No suitable tab found - please open Finary in a tab');
+          throw new Error(
+            'No suitable tab found - please open Finary in a tab'
+          );
         }
 
         const response = await new Promise((resolve, reject) => {
-          const timeoutId = setTimeout(() => reject(new Error('Response timeout')), 10000);
-          chrome.tabs.sendMessage(tabs[0].id, { action: 'REQUEST_TOKEN' }, (response) => {
-            clearTimeout(timeoutId);
-            if (chrome.runtime.lastError) {
-              return reject(new Error(`sendMessage failed: ${chrome.runtime.lastError.message || chrome.runtime.lastError}`));
+          const timeoutId = setTimeout(
+            () => reject(new Error('Response timeout')),
+            10000
+          );
+          chrome.tabs.sendMessage(
+            tabs[0].id,
+            { action: 'REQUEST_TOKEN' },
+            (response) => {
+              clearTimeout(timeoutId);
+              if (chrome.runtime.lastError) {
+                return reject(
+                  new Error(
+                    `sendMessage failed: ${chrome.runtime.lastError.message || chrome.runtime.lastError}`
+                  )
+                );
+              }
+              resolve(response);
             }
-            resolve(response);
-          });
+          );
         });
 
         if (response?.token) {
@@ -159,7 +174,9 @@ export class FinaryClient {
             return parsed;
           } catch (e) {
             console.error('❌ JSON parse error:', e);
-            throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
+            throw new Error(
+              `Invalid JSON response: ${text.substring(0, 100)}...`
+            );
           }
         }
 

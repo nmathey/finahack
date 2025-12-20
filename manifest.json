@@ -22,9 +22,7 @@
     "48": "extension_icon48.png",
     "128": "extension_icon128.png"
   },
-  "host_permissions": [
-    "*://*.finary.com/*"
-  ],
+  "host_permissions": ["*://*.finary.com/*"],
   "content_scripts": [
     {
       "matches": ["https://*.finary.com/*"],
@@ -37,6 +35,8 @@
         "src/export-csv.js",
         "src/injected.js",
         "lib/plotly.min.js",
+        "src/popup_top_movers.html",
+        "src/popup_top_movers.js",
         "src/popup_assetType_distribution.html",
         "src/popup_assetType_distribution.js",
         "src/popup_virtual_envelop.html",

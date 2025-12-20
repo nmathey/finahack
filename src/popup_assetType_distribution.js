@@ -260,7 +260,7 @@
   function escapeHtml(s) {
     return (s || '').replace(
       /[&<>"]/g,
-      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]
     );
   }
 
