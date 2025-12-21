@@ -41,9 +41,9 @@ function flattenAssets(apiResponse) {
     const pushAsset = (
       id,
       name,
+      assetClass,
       assetType,
-      category,
-      subcategory,
+      assetVehicle,
       value,
       quantity,
       pnl
@@ -55,34 +55,25 @@ function flattenAssets(apiResponse) {
         ...baseInfo,
         id: id,
         name: name,
-        assetType: assetType, // D'où vient la donnée (technique)
-        category: category, // Classe d'actif (métier)
-        subcategory: subcategory, // Détail
+        assetClass: assetClass, 
+        assetType: assetType, 
+        assetVehicle: assetVehicle,
+        // Marqueurs pour l'UI indiquant que ces champs sont éditables
+        assetClass_editable: true,
+        assetType_editable: true,
+        assetVehicle_editable: true,
         currentValue: value,
         quantity: quantity,
         pnl_amount: pnl,
       });
     };
 
-    // --- 2. Traitement des CRYPTOS (Logique RealT incluse) ---
+    // --- 2. Traitement des CRYPTOS ---
     if (holding.cryptos) {
       holding.cryptos.forEach((c) => {
         let category = 'crypto';
         let subcategory = 'coin';
         let name = c.crypto.name || c.crypto.code;
-
-        // Logique RealT
-        if (c.crypto.code && c.crypto.code.startsWith('REALTOKEN')) {
-          category = 'real_estate';
-          subcategory = 'tokenized';
-          name = name.replace('REALTOKEN-', '').replace(/-/g, ' ');
-        }
-        // Logique Stablecoins (Exemple)
-        else if (['USDC', 'USDT', 'EURC'].includes(c.crypto.code)) {
-          category = 'fiat';
-          subcategory = 'stablecoin';
-        }
-
         pushAsset(
           c.id,
           name,

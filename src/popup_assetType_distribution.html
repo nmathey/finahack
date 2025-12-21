@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Répartition par myAssetType</title>
+    <title>Répartition par assetType</title>
     <style>
       body {
         font-family: Arial, Helvetica, sans-serif;
@@ -39,7 +39,7 @@
     </style>
   </head>
   <body>
-    <h2>Visualiser répartition par `myAssetType`</h2>
+    <h2>Visualiser répartition par `assetType`</h2>
     <div class="controls">
       <button id="select-all" class="btn">Tout sélectionner</button>
       <button id="clear-all" class="btn">Tout désélectionner</button>
@@ -54,7 +54,7 @@
             <th></th>
             <th>assetId</th>
             <th>assetName</th>
-            <th>myAssetType</th>
+            <th>assetType</th>
             <th>currentValue</th>
           </tr>
         </thead>
@@ -65,6 +65,6 @@
     <div id="chart"></div>
 
     <script src="../lib/plotly.min.js"></script>
-    <script src="popup_myasset_distribution.js"></script>
+    <script src="popup_assetType_distribution.js"></script>
   </body>
 </html>

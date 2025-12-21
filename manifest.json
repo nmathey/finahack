@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FinaHack",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Une extension pour intéragir avec Finary",
   "permissions": [
     "contextMenus",
@@ -36,7 +36,11 @@
       "resources": [
         "src/export-csv.js",
         "src/injected.js",
-        "lib/plotly.min.js"
+        "lib/plotly.min.js",
+        "src/popup_assetType_distribution.html",
+        "src/popup_assetType_distribution.js",
+        "src/popup_virtual_envelop.html",
+        "src/popup_virtual_envelop.js"
       ],
       "matches": ["<all_urls>"]
     }

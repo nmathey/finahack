@@ -4,8 +4,8 @@ import { FinaryClient } from './api.js';
 const initializeMenus = () => {
   console.log('🛠️ Extension installed, creating menus...');
   const menuItems = [
-    { id: 'manageVirtualEnvelop', title: 'Manage myAssetType & virtual_envelop (assets)' },
-    { id: 'visualizeMyAssetType', title: 'Visualize distribution by myAssetType' },
+    { id: 'manageVirtualEnvelop', title: 'Manage assetType & virtual_envelop (assets)' },
+    { id: 'visualizeAssetType', title: 'Visualize distribution by assetType' },
   ];
 
   menuItems.forEach((item) => {
@@ -44,9 +44,9 @@ const handleForceRefresh = async () => {
       envelopeType: it.envelopeType ?? it.envelope_type ?? it.envelopeType ?? '',
       assetId: String(assetIdRaw),
       assetName: it.name ?? it.assetName ?? it.asset_name ?? '',
-      assetType: it.assetType ?? it.type ?? '',
-      category: it.category ?? '',
-      subcategory: it.subcategory ?? '',
+        assetClass: it.assetClass ?? it.category ?? '',
+        assetType: it.assetType ?? it.category ?? it.type ?? '',
+        assetVehicle: it.assetVehicle ?? it.subcategory ?? '',
       currentValue: it.currentValue ?? it.display_current_value ?? null,
       quantity: it.quantity ?? null,
       pnl_amount: it.pnl_amount ?? it.display_unrealized_pnl ?? null,
@@ -57,7 +57,9 @@ const handleForceRefresh = async () => {
     const prev = existingMap.get(String(n.assetId));
     return {
       ...n,
-      myAssetType: prev?.myAssetType || n.assetType || '',
+        assetType: prev?.assetType || n.assetType || '',
+      assetClass: prev?.assetClass || n.assetClass || '',
+      assetVehicle: prev?.assetVehicle || n.assetVehicle || '',
       virtual_envelop: prev?.virtual_envelop || n.accountName || '',
     };
   });
