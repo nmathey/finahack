@@ -22,6 +22,25 @@ document.addEventListener('DOMContentLoaded', () => {
     return ASSET_TYPE_MAP[assetClass] || ['Autre'];
   }
 
+  function getAllAssetTypeValues() {
+    const s = new Set();
+    Object.values(ASSET_TYPE_MAP).forEach((arr) => arr.forEach((v) => s.add(v)));
+    return Array.from(s);
+  }
+
+  function getAllAssetVehicleValues() {
+    const s = new Set();
+    // iterate all asset types and classes
+    getAllAssetTypeValues().forEach((atype) => {
+      // try all possible classes, use '' for class-agnostic
+      Object.keys(ASSET_TYPE_MAP).forEach((cls) => {
+        const opts = getAssetVehicleOptions(atype, cls);
+        opts.forEach((v) => s.add(v));
+      });
+    });
+    return Array.from(s);
+  }
+
   function getAssetVehicleOptions(assetType, assetClass) {
     // Defaults per spec. Some depend on assetClass as well.
     switch (assetType) {
@@ -51,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function render(itemsToRender) {
+  function render(itemsToRender, changedIndices) {
     tbody.innerHTML = '';
     itemsToRender.forEach((it, idx) => {
       const tr = document.createElement('tr');
@@ -99,6 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     items[i].assetType = opts[0] || '';
                   }
                   assetTypeSel.value = items[i].assetType || '';
+                  // trigger change so that vehicle select updates accordingly
+                  try { assetTypeSel.dispatchEvent(new Event('change')); } catch (e) { /* ignore */ }
                 }
               }
             });
@@ -164,6 +185,13 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       tdVirtual.appendChild(inputVirtual);
       tr.appendChild(tdVirtual);
+
+      // highlight if this row was changed by rules
+      if (changedIndices && changedIndices.has(idx)) {
+        tr.classList.add('auto-updated');
+        // remove highlight after a short delay
+        setTimeout(() => { try { tr.classList.remove('auto-updated'); } catch (e) {} }, 3500);
+      }
 
       tbody.appendChild(tr);
     });
@@ -273,7 +301,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function loadRules(cb) {
     chrome.storage.local.get(RULES_KEY, (res) => {
-      const r = Array.isArray(res[RULES_KEY]) ? res[RULES_KEY] : [];
+      let r = Array.isArray(res[RULES_KEY]) ? res[RULES_KEY] : [];
+      // migrate legacy rules that used `target` string to new {targetField,targetValue}
+      r = r.map((rule) => {
+        if (rule && rule.target && !rule.targetField) {
+          return { ...rule, targetField: 'assetClass', targetValue: rule.target };
+        }
+        return rule;
+      });
       renderRules(r);
       if (cb) cb(r);
     });
@@ -302,21 +337,47 @@ document.addEventListener('DOMContentLoaded', () => {
     pattern.value = rule.pattern || '';
     pattern.placeholder = 'mot ou regex';
 
-    const target = document.createElement('select');
-    ['Actions','Obligations','Cash','Fonds euros','Immobilier','Matières premières','Exotique','Autre'].forEach((t)=>{const o=document.createElement('option');o.value=t;o.textContent=t; if (rule.target===t) o.selected=true; target.appendChild(o)});
+    // targetField select (which field to set)
+    const targetFieldSel = document.createElement('select');
+    ['assetClass','assetType','assetVehicle'].forEach((f)=>{const o=document.createElement('option');o.value=f;o.textContent=f; if ((rule.targetField||'assetClass')===f) o.selected=true; targetFieldSel.appendChild(o)});
+
+    // targetValue select (values depend on targetField)
+    const targetValueSel = document.createElement('select');
+    function populateTargetValues(field, selected) {
+      targetValueSel.innerHTML = '';
+      let opts = [];
+      if (field === 'assetClass') opts = Object.keys(ASSET_TYPE_MAP);
+      else if (field === 'assetType') opts = getAllAssetTypeValues();
+      else if (field === 'assetVehicle') opts = getAllAssetVehicleValues();
+      opts.forEach((t)=>{const o=document.createElement('option'); o.value = t; o.textContent = t; if ((selected||'')===t) o.selected=true; targetValueSel.appendChild(o)});
+    }
+    // support legacy `rule.target` value
+    const legacyTarget = rule.target || '';
+    const initialTargetField = rule.targetField || (legacyTarget ? 'assetClass' : 'assetClass');
+    const initialTargetValue = rule.targetValue || legacyTarget || 'Actions';
+    populateTargetValues(initialTargetField, initialTargetValue);
+
+    targetFieldSel.addEventListener('change', (e) => {
+      populateTargetValues(e.target.value);
+    });
 
     const delBtn = document.createElement('button');
     delBtn.textContent = 'Suppr';
     delBtn.addEventListener('click', () => {
+      const currentRows = Array.from(rulesContainer.children);
+      const myIndex = currentRows.indexOf(wrapper);
       const rules = getRulesFromUI();
-      rules.splice(idx,1);
-      saveRules(rules, ()=> renderRules(rules));
+      if (myIndex >= 0 && myIndex < rules.length) {
+        rules.splice(myIndex, 1);
+        saveRules(rules, () => renderRules(rules));
+      }
     });
 
     wrapper.appendChild(fieldSel);
     wrapper.appendChild(opSel);
     wrapper.appendChild(pattern);
-    wrapper.appendChild(target);
+    wrapper.appendChild(targetFieldSel);
+    wrapper.appendChild(targetValueSel);
     wrapper.appendChild(delBtn);
     return wrapper;
   }
@@ -324,8 +385,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function getRulesFromUI() {
     const rows = Array.from(rulesContainer.children);
     return rows.map((row) => {
-      const [fieldSel, opSel, patternInput, targetSel] = row.querySelectorAll('select,input');
-      return { field: fieldSel.value, operator: opSel.value, pattern: patternInput.value, target: targetSel.value };
+      const selects = row.querySelectorAll('select');
+      const fieldSel = selects[0];
+      const opSel = selects[1];
+      const targetFieldSel = selects[2];
+      const targetValueSel = selects[3];
+      const patternInput = row.querySelector('input[type=text]');
+      return { field: fieldSel.value, operator: opSel.value, pattern: patternInput.value, targetField: targetFieldSel.value, targetValue: targetValueSel.value };
     });
   }
 
@@ -338,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   addRuleBtn.addEventListener('click', () => {
     loadRules((rules) => {
-      rules.push({ field: 'assetName', operator: 'contains', pattern: '', target: 'Actions' });
+      rules.push({ field: 'assetName', operator: 'contains', pattern: '', targetField: 'assetClass', targetValue: 'Actions' });
       saveRules(rules, ()=> renderRules(rules));
     });
   });
@@ -369,30 +435,40 @@ document.addEventListener('DOMContentLoaded', () => {
       status.textContent = 'Aucune règle définie'; setTimeout(()=>status.textContent='',2000); return;
     }
     let changed = false;
-    items = items.map((it)=>{
+    const changedIdxs = new Set();
+    items = items.map((it, idx)=>{
       const copy = { ...it };
+      let rowChanged = false;
       for (const r of rules) {
         const fieldVal = copy[r.field];
         if (testRuleOnValue(fieldVal, r)) {
-          if (copy.assetClass !== r.target) { copy.assetClass = r.target; changed = true; }
-          break; // first matching rule applies
+          // apply rule to correct target field
+          const tf = r.targetField || 'assetClass';
+          const tv = r.targetValue || r.target || '';
+          if (tf === 'assetClass') {
+            if (copy.assetClass !== tv) { copy.assetClass = tv; rowChanged = true; changed = true; }
+            // when assetClass set, ensure assetType and vehicle valid
+            const optsA = getAssetTypeOptions(copy.assetClass);
+            if (!optsA.includes(copy.assetType)) { copy.assetType = optsA[0] || ''; rowChanged = true; changed = true; }
+            const optsV1 = getAssetVehicleOptions(copy.assetType || '', copy.assetClass || '');
+            if (!optsV1.includes(copy.assetVehicle)) { copy.assetVehicle = optsV1[0] || ''; rowChanged = true; changed = true; }
+          } else if (tf === 'assetType') {
+            if (copy.assetType !== tv) { copy.assetType = tv; rowChanged = true; changed = true; }
+            // when assetType set, ensure vehicle valid
+            const optsV2 = getAssetVehicleOptions(copy.assetType || '', copy.assetClass || '');
+            if (!optsV2.includes(copy.assetVehicle)) { copy.assetVehicle = optsV2[0] || ''; rowChanged = true; changed = true; }
+          } else if (tf === 'assetVehicle') {
+            if (copy.assetVehicle !== tv) { copy.assetVehicle = tv; rowChanged = true; changed = true; }
+          }
+          // continue to allow other rules to apply as well
         }
       }
-      // ensure assetType is valid for the resulting assetClass
-      const opts = getAssetTypeOptions(copy.assetClass);
-      if (!opts.includes(copy.assetType)) {
-        copy.assetType = opts[0] || '';
-      }
-      // ensure assetVehicle is valid for the resulting assetType/class
-      const optsV = getAssetVehicleOptions(copy.assetType || '', copy.assetClass || '');
-      if (!optsV.includes(copy.assetVehicle)) {
-        copy.assetVehicle = optsV[0] || '';
-      }
+      if (rowChanged) changedIdxs.add(idx);
       return copy;
     });
     if (changed) {
       chrome.storage.local.set({ flattened_holdings_cache: items }, () => {
-        render(items);
+        render(items, changedIdxs);
         status.textContent = 'Règles appliquées';
         setTimeout(()=>status.textContent='',2000);
       });

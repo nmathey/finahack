@@ -108,7 +108,7 @@
       chartEl.innerHTML = '<div>Aucune donnée sélectionnée</div>';
       return;
     }
-    // Build tree by full paths to avoid double-counting: root -> my -> (cat under my) -> (sub under cat)
+    // Build tree by full paths to avoid double-counting: root -> assetClass -> assetType -> assetVehicle
     const rootId = 'root_total';
     const ids = [];
     const labels = [];
@@ -116,65 +116,64 @@
     const values = [];
 
     // maps keyed by path id
-    const myVals = new Map(); // myId -> value
-    const catVals = new Map(); // catPathId (my::X::cat::Y) -> value
-    const subVals = new Map(); // subPathId (my::X::cat::Y::sub::Z) -> value
+    const classVals = new Map(); // classId -> value
+    const typeVals = new Map(); // typeId (class::X::type::Y) -> value
+    const vehicleVals = new Map(); // vehicleId (class::X::type::Y::vehicle::Z) -> value
 
     items.forEach((it) => {
-      const my = it.assetType || 'ToBeDefined';
-      const cat = it.assetClass || 'ToBeDefined';
-      const sub = it.assetVehicle || 'ToBeDefined';
+      const cls = it.assetClass || 'ToBeDefined';
+      const type = it.assetType || 'ToBeDefined';
+      const vehicle = it.assetVehicle || 'ToBeDefined';
       const v = Number(it.currentValue) || 0;
 
-      const myId = `my::${my}`;
-      const catId = `cat::${my}::${cat}`;
-      const subId = `sub::${my}::${cat}::${sub}`;
+      const classId = `class::${cls}`;
+      const typeId = `type::${cls}::${type}`;
+      const vehicleId = `vehicle::${cls}::${type}::${vehicle}`;
 
-      myVals.set(myId, (myVals.get(myId) || 0) + v);
-      catVals.set(catId, (catVals.get(catId) || 0) + v);
-      subVals.set(subId, (subVals.get(subId) || 0) + v);
+      classVals.set(classId, (classVals.get(classId) || 0) + v);
+      typeVals.set(typeId, (typeVals.get(typeId) || 0) + v);
+      vehicleVals.set(vehicleId, (vehicleVals.get(vehicleId) || 0) + v);
     });
 
     // root
-    const totalItems = Array.from(myVals.values()).reduce((s, n) => s + n, 0);
+    const totalItems = Array.from(classVals.values()).reduce((s, n) => s + n, 0);
     ids.push(rootId);
     labels.push('Total');
     parents.push('');
     values.push(totalItems);
 
-    // my nodes
-    for (const [myId, v] of myVals) {
-      ids.push(myId);
-      labels.push(myId.replace(/^my::/, ''));
+    // class nodes (direct children of root)
+    for (const [classId, v] of classVals) {
+      ids.push(classId);
+      labels.push(classId.replace(/^class::/, ''));
       parents.push(rootId);
       values.push(v);
     }
 
-    // cat nodes (under their my parent)
-    for (const [catId, v] of catVals) {
-      const parts = catId.split('::');
-      const myId = `my::${parts[1]}`;
+    // type nodes (under their class parent)
+    for (const [typeId, v] of typeVals) {
+      const parts = typeId.split('::');
+      const classId = `class::${parts[1]}`;
       const label = parts.slice(2).join('::');
-      ids.push(catId);
+      ids.push(typeId);
       labels.push(label);
-      parents.push(myId);
+      parents.push(classId);
       values.push(v);
     }
 
-    // sub nodes (under their cat parent)
-    for (const [subId, v] of subVals) {
-      const parts = subId.split('::');
-      const catId = `cat::${parts[1]}::${parts[2]}`;
+    // vehicle nodes (under their type parent)
+    for (const [vehicleId, v] of vehicleVals) {
+      const parts = vehicleId.split('::');
+      const typeId = `type::${parts[1]}::${parts[2]}`;
       const label = parts.slice(3).join('::');
-      ids.push(subId);
+      ids.push(vehicleId);
       labels.push(label);
-      parents.push(catId);
+      parents.push(typeId);
       values.push(v);
     }
 
-    // deterministic color generator for assetType
+    // deterministic color generator for assetClass
     function colorForLabel(label) {
-      // simple hash to hue
       let h = 0;
       for (let i = 0; i < label.length; i++) {
         h = (h << 5) - h + label.charCodeAt(i);
@@ -184,11 +183,11 @@
       return `hsl(${h},60%,45%)`;
     }
 
-    // build colors array: color assetType nodes by their label, others neutral
+    // build colors array: color assetClass nodes by their label, others neutral
     const colors = [];
     for (let i = 0; i < ids.length; i++) {
       const id = ids[i];
-      if (id.startsWith('my::')) {
+      if (id.startsWith('class::')) {
         const label = labels[i] || '';
         colors.push(colorForLabel(label));
       } else {
