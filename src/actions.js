@@ -123,14 +123,15 @@ export async function handleMenuClick(info) {
       height: 700,
     });
   } else if (info.menuItemId === 'showTopMovers') {
-    getTopMovers().then((data) => {
-      chrome.storage.local.set({ topMoversData: data }, () => {
-        chrome.windows.create({
-          url: chrome.runtime.getURL('src/popup_top_movers.html'),
-          type: 'popup',
-          width: 800,
-          height: 600,
-        });
+    chrome.storage.local.set({ topMoversData: { message: 'Loading...' } }, () => {
+      chrome.windows.create({
+        url: chrome.runtime.getURL('src/popup_top_movers.html'),
+        type: 'popup',
+        width: 800,
+        height: 600,
+      });
+      getTopMovers().then((data) => {
+        chrome.storage.local.set({ topMoversData: data });
       });
     });
   }
