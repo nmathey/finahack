@@ -10,7 +10,7 @@ const initializeMenus = () => {
       title: 'Manage myAssetType & virtual_envelop (assets)',
     },
     {
-      id: 'visualizeMyAssetType',
+      id: 'visualizeAssetType',
       title: 'Visualize distribution by myAssetType',
     },
     { id: 'showTopMovers', title: 'Show Top Movers' },
