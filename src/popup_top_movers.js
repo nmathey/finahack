@@ -71,4 +71,12 @@ document.addEventListener('DOMContentLoaded', () => {
       renderData(changes.topMoversData.newValue);
     }
   });
+
+  // Time range selector
+  document.getElementById('time-range-selector').addEventListener('click', (event) => {
+    if (event.target.tagName === 'BUTTON') {
+      const timeRange = event.target.dataset.range;
+      chrome.runtime.sendMessage({ action: 'getTopMovers', timeRange });
+    }
+  });
 });

@@ -4,7 +4,7 @@ import { FinaryClient } from './api.js';
  * Fetches the current asset data and returns it as a snapshot.
  * @returns {Promise<Array>} A promise that resolves to the flattened asset list.
  */
-async function getAssetSnapshot() {
+export async function getAssetSnapshot() {
   const finary = new FinaryClient();
   const organizationId = await finary.getSelectedOrganization();
   if (!organizationId) {
@@ -23,36 +23,45 @@ async function getAssetSnapshot() {
 }
 
 /**
- * Stores the given asset snapshot in chrome.storage.local.
+ * Adds a new asset snapshot to the history in chrome.storage.local.
  * @param {Array} snapshot The asset snapshot to store.
  * @returns {Promise<void>}
  */
-function storeAssetSnapshot(snapshot) {
-  const dataToStore = {
+export async function addAssetSnapshotToHistory(snapshot) {
+  const newSnapshot = {
     timestamp: new Date().toISOString(),
     assets: snapshot,
   };
+
+  const history = await getAssetSnapshotHistory();
+  history.push(newSnapshot);
+
+  // Prune snapshots older than one year
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  const prunedHistory = history.filter(
+    (snap) => new Date(snap.timestamp) > oneYearAgo
+  );
+
   return new Promise((resolve) => {
-    chrome.storage.local.set({ assetSnapshot: dataToStore }, () => {
-      console.log('New asset snapshot stored.');
+    chrome.storage.local.set({ assetSnapshotHistory: prunedHistory }, () => {
+      console.log('New asset snapshot added to history.');
       resolve();
     });
   });
 }
 
 /**
- * Retrieves the last stored asset snapshot from chrome.storage.local.
- * @returns {Promise<Object|null>} A promise that resolves to the stored snapshot or null if not found.
+ * Retrieves the asset snapshot history from chrome.storage.local.
+ * @returns {Promise<Array>} A promise that resolves to the snapshot history.
  */
-function getStoredAssetSnapshot() {
+function getAssetSnapshotHistory() {
   return new Promise((resolve) => {
-    chrome.storage.local.get('assetSnapshot', (result) => {
-      if (result.assetSnapshot) {
-        console.log('Retrieved stored asset snapshot.');
-        resolve(result.assetSnapshot);
+    chrome.storage.local.get('assetSnapshotHistory', (result) => {
+      if (result.assetSnapshotHistory) {
+        resolve(result.assetSnapshotHistory);
       } else {
-        console.log('No asset snapshot found in storage.');
-        resolve(null);
+        resolve([]);
       }
     });
   });
@@ -136,32 +145,50 @@ function calculateTopMovers(changes) {
 /**
  * Main function to get the top movers report.
  * It fetches new data, compares with stored data, and stores the new data.
+ * @param {string} timeRange - The time range for the report ('last_sync', 'week', 'month', 'year').
  * @returns {Promise<Object>} The top movers report.
  */
-export async function getTopMovers() {
-  const oldSnapshot = await getStoredAssetSnapshot();
-  const newSnapshot = await getAssetSnapshot();
+export async function getTopMovers(timeRange = 'last_sync') {
+  const history = await getAssetSnapshotHistory();
+  const latestSnapshot = history[history.length - 1];
+  let oldSnapshot;
 
-  if (!newSnapshot || newSnapshot.length === 0) {
-    return { error: 'Could not fetch new asset data.' };
+  if (timeRange === 'last_sync') {
+    oldSnapshot = history[history.length - 2];
+  } else {
+    const now = new Date();
+    let targetDate = new Date();
+
+    if (timeRange === 'week') {
+      targetDate.setDate(now.getDate() - 7);
+    } else if (timeRange === 'month') {
+      targetDate.setMonth(now.getMonth() - 1);
+    } else if (timeRange === 'year') {
+      targetDate.setFullYear(now.getFullYear() - 1);
+    }
+
+    // Find the snapshot closest to the target date
+    oldSnapshot = history.reduce((prev, curr) => {
+      const currDate = new Date(curr.timestamp);
+      const prevDate = new Date(prev.timestamp);
+      return Math.abs(currDate - targetDate) < Math.abs(prevDate - targetDate)
+        ? curr
+        : prev;
+    });
   }
 
-  // Always store the new snapshot for the next comparison
-  await storeAssetSnapshot(newSnapshot);
-
-  if (!oldSnapshot) {
+  if (!latestSnapshot || !oldSnapshot) {
     return {
-      message:
-        'This is the first run. Data has been saved for the next comparison.',
+      message: 'Not enough data to generate a report for this time range.',
     };
   }
 
-  const changes = compareSnapshots(oldSnapshot.assets, newSnapshot);
+  const changes = compareSnapshots(oldSnapshot.assets, latestSnapshot.assets);
   const topMovers = calculateTopMovers(changes);
 
   return {
     ...topMovers,
     oldTimestamp: oldSnapshot.timestamp,
-    newTimestamp: new Date().toISOString(),
+    newTimestamp: latestSnapshot.timestamp,
   };
 }

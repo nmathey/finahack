@@ -104,4 +104,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch((err) => sendResponse({ error: err.message || String(err) }));
     return true;
   }
+
+  if (message?.action === 'getTopMovers') {
+    getTopMovers(message.timeRange).then((data) => {
+      chrome.storage.local.set({ topMoversData: data });
+    });
+  }
 });
