@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+  const timestampArea = document.getElementById('timestamp-area');
   const messageArea = document.getElementById('message-area');
   const topGainingAssetsList = document.getElementById('top-gaining-assets');
   const topLosingAssetsList = document.getElementById('top-losing-assets');
@@ -41,6 +42,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (data.error) {
       messageArea.textContent = data.error;
       return;
+    }
+
+    if (data.oldTimestamp && data.newTimestamp) {
+      const oldDate = new Date(data.oldTimestamp);
+      const newDate = new Date(data.newTimestamp);
+      const durationHours = ((newDate - oldDate) / (1000 * 60 * 60)).toFixed(2);
+      timestampArea.textContent = `Evolution calculated from ${oldDate.toLocaleString()} (${durationHours} hours ago)`;
     }
 
     messageArea.textContent = ''; // Clear message area
