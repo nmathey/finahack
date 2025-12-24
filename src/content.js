@@ -70,7 +70,11 @@ const setupEventListeners = () => {
   window.addEventListener('message', handleWindowMessages);
   chrome.runtime.onMessage.addListener(handleRuntimeMessages);
   chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.type === 'progress-modal' && typeof window.injectProgressModal === 'function' && typeof window.updateProgressModal === 'function') {
+    if (
+      msg.type === 'progress-modal' &&
+      typeof window.injectProgressModal === 'function' &&
+      typeof window.updateProgressModal === 'function'
+    ) {
       window.injectProgressModal();
       window.updateProgressModal(msg.data);
     }

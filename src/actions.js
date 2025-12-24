@@ -1,4 +1,9 @@
 import { FinaryClient } from './api.js';
+import {
+  getTopMovers,
+  getAssetSnapshot,
+  addAssetSnapshotToHistory,
+} from './top_movers_core.js';
 
 export async function handleMenuClick(info) {
   const finaryClient = new FinaryClient();
@@ -120,6 +125,23 @@ export async function handleMenuClick(info) {
       type: 'popup',
       width: 900,
       height: 700,
+    });
+  } else if (info.menuItemId === 'showTopMovers') {
+    chrome.storage.local.set({ topMoversData: { message: 'Loading...' } }, async () => {
+      chrome.windows.create({
+        url: chrome.runtime.getURL('src/popup_top_movers.html'),
+        type: 'popup',
+        width: 800,
+        height: 600,
+      });
+
+      const newSnapshot = await getAssetSnapshot();
+      if (newSnapshot && newSnapshot.length > 0) {
+        await addAssetSnapshotToHistory(newSnapshot);
+      }
+
+      const data = await getTopMovers('last_sync');
+      chrome.storage.local.set({ topMoversData: data });
     });
   }
 }

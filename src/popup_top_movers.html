@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Top Movers</title>
+    <style>
+      body {
+        font-family: sans-serif;
+      }
+      h1 {
+        text-align: center;
+      }
+      .container {
+        display: flex;
+        justify-content: space-around;
+      }
+      .category {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Top Movers</h1>
+    <div id="time-range-selector" style="text-align: center; padding: 10px;">
+      <button data-range="last_sync">Last Sync</button>
+      <button data-range="week">Week</button>
+      <button data-range="month">Month</button>
+      <button data-range="year">Year</button>
+    </div>
+    <div id="timestamp-area" style="text-align: center; padding: 10px;"></div>
+    <div
+      id="message-area"
+      style="text-align: center; padding: 10px; color: red"
+    ></div>
+    <div class="container">
+      <div class="category">
+        <h2>Top Gaining Assets</h2>
+        <ul id="top-gaining-assets"></ul>
+      </div>
+      <div class="category">
+        <h2>Top Losing Assets</h2>
+        <ul id="top-losing-assets"></ul>
+      </div>
+    </div>
+    <div class="container">
+      <div class="category">
+        <h2>Top Gaining Envelopes</h2>
+        <ul id="top-gaining-envelopes"></ul>
+      </div>
+      <div class="category">
+        <h2>Top Losing Envelopes</h2>
+        <ul id="top-losing-envelopes"></ul>
+      </div>
+    </div>
+    <div class="container">
+      <div class="category">
+        <h2>Top Gaining Asset Classes</h2>
+        <ul id="top-gaining-classes"></ul>
+      </div>
+      <div class="category">
+        <h2>Top Losing Asset Classes</h2>
+        <ul id="top-losing-classes"></ul>
+      </div>
+    </div>
+    <script src="popup_top_movers.js"></script>
+  </body>
+</html>
