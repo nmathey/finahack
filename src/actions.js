@@ -3,6 +3,7 @@ import {
   getTopMovers,
   getAssetSnapshot,
   addAssetSnapshotToHistory,
+  getAssetSnapshotHistory,
 } from './top_movers_core.js';
 
 export async function handleMenuClick(info) {
@@ -135,9 +136,18 @@ export async function handleMenuClick(info) {
         height: 600,
       });
 
-      const newSnapshot = await getAssetSnapshot();
-      if (newSnapshot && newSnapshot.length > 0) {
-        await addAssetSnapshotToHistory(newSnapshot);
+      // Check if we need to refresh the snapshot (older than 1 hour)
+      const history = await getAssetSnapshotHistory();
+      const lastSnapshot = history[history.length - 1];
+      const now = new Date();
+      const needsRefresh = !lastSnapshot || 
+        (now - new Date(lastSnapshot.timestamp)) / (1000 * 60) > 60;
+
+      if (needsRefresh) {
+        const newSnapshot = await getAssetSnapshot();
+        if (newSnapshot && newSnapshot.length > 0) {
+          await addAssetSnapshotToHistory(newSnapshot);
+        }
       }
 
       const data = await getTopMovers('last_sync');

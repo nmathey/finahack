@@ -55,7 +55,7 @@ export async function addAssetSnapshotToHistory(snapshot) {
  * Retrieves the asset snapshot history from chrome.storage.local.
  * @returns {Promise<Array>} A promise that resolves to the snapshot history.
  */
-function getAssetSnapshotHistory() {
+export function getAssetSnapshotHistory() {
   return new Promise((resolve) => {
     chrome.storage.local.get('assetSnapshotHistory', (result) => {
       if (result.assetSnapshotHistory) {
@@ -128,7 +128,7 @@ function calculateTopMovers(changes) {
 
   // Asset Classes
   const classChanges = changes.reduce((acc, change) => {
-    acc[change.category] = (acc[change.category] || 0) + change.valueChange;
+    acc[change.assetClass] = (acc[change.assetClass] || 0) + change.valueChange;
     return acc;
   }, {});
 
@@ -143,12 +143,57 @@ function calculateTopMovers(changes) {
 }
 
 /**
+ * Checks if the cached top movers data is still valid (less than 24 hours old).
+ * @returns {Promise<boolean>} True if cache is valid, false otherwise.
+ */
+function isCacheValid() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get('topMoversDataTimestamp', (result) => {
+      if (!result.topMoversDataTimestamp) {
+        resolve(false);
+        return;
+      }
+
+      const lastSyncTime = new Date(result.topMoversDataTimestamp);
+      const now = new Date();
+      const hoursSinceSync = (now - lastSyncTime) / (1000 * 60 * 60);
+
+      resolve(hoursSinceSync < 24);
+    });
+  });
+}
+
+/**
+ * Gets the cached top movers data.
+ * @returns {Promise<Object|null>} The cached data or null if not available.
+ */
+function getCachedTopMovers() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get('topMoversData', (result) => {
+      resolve(result.topMoversData || null);
+    });
+  });
+}
+
+/**
  * Main function to get the top movers report.
  * It fetches new data, compares with stored data, and stores the new data.
+ * If the cache is less than 24 hours old, returns cached data instead.
  * @param {string} timeRange - The time range for the report ('last_sync', 'week', 'month', 'year').
  * @returns {Promise<Object>} The top movers report.
  */
 export async function getTopMovers(timeRange = 'last_sync') {
+  // For 'last_sync' timeRange, check if cache is still valid
+  if (timeRange === 'last_sync') {
+    const cacheValid = await isCacheValid();
+    if (cacheValid) {
+      const cachedData = await getCachedTopMovers();
+      if (cachedData && !cachedData.message && !cachedData.error) {
+        return cachedData;
+      }
+    }
+  }
+
   const history = await getAssetSnapshotHistory();
   const latestSnapshot = history[history.length - 1];
   let oldSnapshot;
@@ -186,9 +231,18 @@ export async function getTopMovers(timeRange = 'last_sync') {
   const changes = compareSnapshots(oldSnapshot.assets, latestSnapshot.assets);
   const topMovers = calculateTopMovers(changes);
 
-  return {
+  const result = {
     ...topMovers,
     oldTimestamp: oldSnapshot.timestamp,
     newTimestamp: latestSnapshot.timestamp,
   };
+
+  // Store the timestamp of this sync
+  if (timeRange === 'last_sync') {
+    chrome.storage.local.set({
+      topMoversDataTimestamp: new Date().toISOString(),
+    });
+  }
+
+  return result;
 }
