@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
   exportBtn.addEventListener('click', () => {
     if (!Array.isArray(items) || items.length === 0) {
       status.textContent = 'Aucune donnée à exporter';
-      setTimeout(() => status.textContent = '', 2000);
+      setTimeout(() => (status.textContent = ''), 2000);
       return;
     }
 
@@ -278,8 +278,8 @@ document.addEventListener('DOMContentLoaded', () => {
       'currentValue', 'quantity', 'pnl_amount', 'virtual_envelop'
     ];
 
-    const rows = items.map(it => {
-      return headers.map(h => escapeCsv(it[h] ?? '')).join(',');
+    const rows = items.map((it) => {
+      return headers.map((h) => escapeCsv(it[h] ?? '')).join(',');
     });
 
     const csvContent = [headers.join(','), ...rows].join('\n');
@@ -293,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     status.textContent = 'Export généré';
-    setTimeout(() => status.textContent = '', 2000);
+    setTimeout(() => (status.textContent = ''), 2000);
   });
 
   // --- Rules management ---

@@ -1,4 +1,10 @@
 import { FinaryClient } from './api.js';
+import {
+  getTopMovers,
+  getAssetSnapshot,
+  addAssetSnapshotToHistory,
+  getAssetSnapshotHistory,
+} from './top_movers_core.js';
 
 export async function handleMenuClick(info) {
   const finaryClient = new FinaryClient();
@@ -120,6 +126,32 @@ export async function handleMenuClick(info) {
       type: 'popup',
       width: 900,
       height: 700,
+    });
+  } else if (info.menuItemId === 'showTopMovers') {
+    chrome.storage.local.set({ topMoversData: { message: 'Loading...' } }, async () => {
+      chrome.windows.create({
+        url: chrome.runtime.getURL('src/popup_top_movers.html'),
+        type: 'popup',
+        width: 800,
+        height: 600,
+      });
+
+      // Check if we need to refresh the snapshot (older than 1 hour)
+      const history = await getAssetSnapshotHistory();
+      const lastSnapshot = history[history.length - 1];
+      const now = new Date();
+      const needsRefresh = !lastSnapshot || 
+        (now - new Date(lastSnapshot.timestamp)) / (1000 * 60) > 60;
+
+      if (needsRefresh) {
+        const newSnapshot = await getAssetSnapshot();
+        if (newSnapshot && newSnapshot.length > 0) {
+          await addAssetSnapshotToHistory(newSnapshot);
+        }
+      }
+
+      const data = await getTopMovers('last_sync');
+      chrome.storage.local.set({ topMoversData: data });
     });
   }
 }
