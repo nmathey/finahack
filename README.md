@@ -28,9 +28,30 @@ Pour le moment, l'extension est compatible avec Chrome et Edge.
 4. Passez en 'Mode développeur' en cochant la case correspondante en haut à droite de votre écran.
 5. Trois boutons devraient apparaître. Cliquez sur 'Charger l'extension non empaquetée...', puis choisissez le dossier contenant les codes sources et le précieux manifest.json.
 
-## Contributions!
+## Utilisation
+L'extension s'utilise depuis le menu contextuel (clic droit) dans Finary Web :
 
+1. Connectez-vous à votre compte Finary sur https://*.finary.com.
+2. Faites un clic droit dans la page.
+3. Choisissez l'une des actions suivantes :
+   
+   * **Manage myAssetType & virtual_envelop (assets)** : ouvre un tableau des assets pour éditer `assetType`, `assetClass`, `assetVehicle` et le champ `virtual_envelop`, puis sauvegarder dans le cache local.
+   * **Visualize distribution by myAssetType** : ouvre un graphique de répartition par `assetType`.
+   * **Show Top Movers** : ouvre la fenêtre des meilleures/pires performances (assets, enveloppes, classes) sur différentes périodes.
+
+N.B: selon la taille de vos portefeuilles les chargements peuvent être long.
+
+### Dépannage rapide
+* Vérifiez que vous êtes bien connecté à Finary dans l'onglet actif (l'extension récupère un token de session).
+* Rafraîchissez la page Finary après l'installation ou après une mise à jour de l'extension.
+* Si une fenêtre ne s'ouvre pas, regardez la console de l'extension (chrome://extensions Détails "Inspecter les vues") pour voir les erreurs.
+
+## Développement local / Contribution
 Les contributions sont les bienvenues ! Issues, PR, Documentation, tout est à prendre :)
+
+1. Clonez le repo sur votre poste
+2. Chargez l'extension en local via `chrome://extensions` (Mode développeur Charger l'extension non empaquetée) en pointant vers le dossier du repo.
+3. Modifiez les fichiers dans `src/`, puis cliquez sur **Recharger** dans la page des extensions pour prendre en compte les changements.
 
 ## 💌 Vous souhaitez me soutenir?
 
