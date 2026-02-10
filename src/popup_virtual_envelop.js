@@ -325,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
     wrapper.style.marginTop = '6px';
 
     const fieldSel = document.createElement('select');
-    ['assetName','assetType','assetVehicle','institutionName','accountName'].forEach((f)=>{
+    ['assetName','assetType','assetVehicle','institutionName','accountName', 'envelopeType'].forEach((f)=>{
       const o = document.createElement('option'); o.value = f; o.textContent = f; if (rule.field===f) o.selected=true; fieldSel.appendChild(o);
     });
 
