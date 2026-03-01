@@ -43,7 +43,14 @@
     <div class="controls">
       <button id="select-all" class="btn">Tout sélectionner</button>
       <button id="clear-all" class="btn">Tout désélectionner</button>
-      <button id="visualize" class="btn">Visualiser (camembert)</button>
+      <label for="vis-mode">Mode:</label>
+      <select id="vis-mode" style="margin-right:8px">
+        <option value="sunburst">Hierarchie (Sunburst)</option>
+        <option value="pie">Camembert (assetClass)</option>
+        <option value="treemap" selected>Treemap (assetClass)</option>
+      </select>
+      <button id="visualize" class="btn">Visualiser</button>
+      <button id="toggle-assets" class="btn">Masquer sélection</button>
       <span id="info"></span>
     </div>
 

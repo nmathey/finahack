@@ -237,20 +237,68 @@
     return Object.keys(map).map((k) => ({ assetType: k, value: map[k] }));
   }
 
+  function aggregateByAssetClass(items) {
+    const map = {};
+    items.forEach((it) => {
+      const key = it.assetClass || 'ToBeDefined';
+      map[key] = (map[key] || 0) + (Number(it.currentValue) || 0);
+    });
+    return Object.keys(map).map((k) => ({ assetClass: k, value: map[k] }));
+  }
+
   function drawPie(agg) {
     if (!agg || agg.length === 0) {
       chartEl.innerHTML = '<div>Aucune donnée sélectionnée</div>';
       return;
     }
-    const labels = agg.map((a) => a.assetType);
+    const labels = agg.map((a) => a.assetClass || a.assetType || 'ToBeDefined');
     const values = agg.map((a) => a.value);
+    const custom = values.map((v) => formatCurrency(v));
     const data = [
       {
         labels,
         values,
         type: 'pie',
         textinfo: 'label+percent',
-        hoverinfo: 'label+value',
+        hovertemplate: '%{label}: %{customdata} (%{percent:.2%})<extra></extra>',
+        customdata: custom,
+      },
+    ];
+    const layout = { height: 420, margin: { t: 20, b: 20, l: 20, r: 20 } };
+    Plotly.newPlot(chartEl, data, layout, { displayModeBar: false });
+  }
+
+  function drawTreemap(items) {
+    if (!items || items.length === 0) {
+      chartEl.innerHTML = '<div>Aucune donnée sélectionnée</div>';
+      return;
+    }
+    // aggregate by assetClass
+    const map = {};
+    items.forEach((it) => {
+      const cls = it.assetClass || 'ToBeDefined';
+      map[cls] = (map[cls] || 0) + (Number(it.currentValue) || 0);
+    });
+    const labels = Object.keys(map);
+    const values = labels.map((k) => map[k]);
+    // Treemap expects a parent for each label; use the 'Total' root label
+    const parents = labels.map(() => 'Total');
+    const total = values.reduce((s, v) => s + v, 0);
+    labels.unshift('Total');
+    values.unshift(total);
+    parents.unshift('');
+
+    const text = values.map((v) => formatCurrency(v));
+    const data = [
+      {
+        type: 'treemap',
+        labels,
+        parents,
+        values,
+        branchvalues: 'total',
+        text: text,
+        hovertemplate: '%{label}: %{text} (%{percentRoot:.2%})<extra></extra>',
+        textinfo: 'label+text+percent entry',
       },
     ];
     const layout = { height: 420, margin: { t: 20, b: 20, l: 20, r: 20 } };
@@ -301,12 +349,21 @@
       return;
     }
     try {
-      drawSunburst(items);
+      const modeEl = document.getElementById('vis-mode');
+      const mode = modeEl ? modeEl.value : 'sunburst';
+      if (mode === 'treemap') {
+        drawTreemap(items);
+      } else if (mode === 'pie') {
+        const agg = aggregateByAssetClass(items);
+        drawPie(agg);
+      } else {
+        drawSunburst(items);
+      }
     } catch (e) {
-      console.error('Erreur dessin sunburst', e);
-      // fallback: aggregate by assetType and draw pie
+      console.error('Erreur dessin', e);
+      // fallback: aggregate by assetClass and draw pie
       try {
-        const agg = aggregateByAssetType(items);
+        const agg = aggregateByAssetClass(items);
         if (agg && agg.length > 0) {
           drawPie(agg);
         } else {
@@ -318,6 +375,20 @@
         chartEl.innerHTML =
           '<div>Erreur lors du rendu du graphique (voir console).</div>';
       }
+    }
+  });
+
+  // toggle assets selection visibility
+  document.getElementById('toggle-assets').addEventListener('click', (e) => {
+    const el = document.getElementById('assets-list');
+    const btn = e.currentTarget;
+    if (!el) return;
+    if (el.style.display === 'none') {
+      el.style.display = '';
+      btn.textContent = 'Masquer sélection';
+    } else {
+      el.style.display = 'none';
+      btn.textContent = 'Afficher sélection';
     }
   });
 
