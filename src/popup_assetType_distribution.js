@@ -69,6 +69,7 @@
       tr.dataset.assetType = it.assetType || '';
       tr.dataset.assetClass = it.assetClass || '';
       tr.dataset.assetVehicle = it.assetVehicle || '';
+      tr.dataset.virtualEnvelop = it.virtual_envelop || '';
       tbody.appendChild(tr);
     });
     // after rendering, try to restore previous selection
@@ -97,6 +98,7 @@
             '',
           assetClass: row.dataset.assetClass || '',
           assetVehicle: row.dataset.assetVehicle || '',
+          virtual_envelop: row.dataset.virtualEnvelop || '',
           currentValue: Number(row.dataset.value) || 0,
         };
       });
@@ -108,7 +110,7 @@
       chartEl.innerHTML = '<div>Aucune donnée sélectionnée</div>';
       return;
     }
-    // Build tree by full paths to avoid double-counting: root -> assetClass -> assetType -> assetVehicle
+    // Build tree by full paths to avoid double-counting: root -> virtual_envelop -> assetClass -> assetVehicle
     const rootId = 'root_total';
     const ids = [];
     const labels = [];
@@ -116,22 +118,22 @@
     const values = [];
 
     // maps keyed by path id
+    const virtualVals = new Map(); // virtualId -> value
     const classVals = new Map(); // classId -> value
-    const typeVals = new Map(); // typeId (class::X::type::Y) -> value
-    const vehicleVals = new Map(); // vehicleId (class::X::type::Y::vehicle::Z) -> value
+    const vehicleVals = new Map(); // vehicleId -> value
 
     items.forEach((it) => {
+      const virtualEnvelop = it.virtual_envelop || 'ToBeDefined';
       const cls = it.assetClass || 'ToBeDefined';
-      const type = it.assetType || 'ToBeDefined';
       const vehicle = it.assetVehicle || 'ToBeDefined';
       const v = Number(it.currentValue) || 0;
 
-      const classId = `class::${cls}`;
-      const typeId = `type::${cls}::${type}`;
-      const vehicleId = `vehicle::${cls}::${type}::${vehicle}`;
+      const virtualId = `virtual::${virtualEnvelop}`;
+      const classId = `class::${virtualEnvelop}::${cls}`;
+      const vehicleId = `vehicle::${virtualEnvelop}::${cls}::${vehicle}`;
 
+      virtualVals.set(virtualId, (virtualVals.get(virtualId) || 0) + v);
       classVals.set(classId, (classVals.get(classId) || 0) + v);
-      typeVals.set(typeId, (typeVals.get(typeId) || 0) + v);
       vehicleVals.set(vehicleId, (vehicleVals.get(vehicleId) || 0) + v);
     });
 
@@ -142,33 +144,33 @@
     parents.push('');
     values.push(totalItems);
 
-    // class nodes (direct children of root)
-    for (const [classId, v] of classVals) {
-      ids.push(classId);
-      labels.push(classId.replace(/^class::/, ''));
+    // virtual_envelop nodes (direct children of root)
+    for (const [virtualId, v] of virtualVals) {
+      ids.push(virtualId);
+      labels.push(virtualId.replace(/^virtual::/, ''));
       parents.push(rootId);
       values.push(v);
     }
 
-    // type nodes (under their class parent)
-    for (const [typeId, v] of typeVals) {
-      const parts = typeId.split('::');
-      const classId = `class::${parts[1]}`;
+    // class nodes (under their virtual_envelop parent)
+    for (const [classId, v] of classVals) {
+      const parts = classId.split('::');
+      const virtualId = `virtual::${parts[1]}`;
       const label = parts.slice(2).join('::');
-      ids.push(typeId);
+      ids.push(classId);
       labels.push(label);
-      parents.push(classId);
+      parents.push(virtualId);
       values.push(v);
     }
 
-    // vehicle nodes (under their type parent)
+    // vehicle nodes (under their class parent)
     for (const [vehicleId, v] of vehicleVals) {
       const parts = vehicleId.split('::');
-      const typeId = `type::${parts[1]}::${parts[2]}`;
+      const classId = `class::${parts[1]}::${parts[2]}`;
       const label = parts.slice(3).join('::');
       ids.push(vehicleId);
       labels.push(label);
-      parents.push(typeId);
+      parents.push(classId);
       values.push(v);
     }
 
@@ -224,48 +226,17 @@
         insidetextorientation: 'radial',
       },
     ];
-    const layout = { height: 420, margin: { t: 20, b: 20, l: 20, r: 20 } };
-    Plotly.newPlot(chartEl, data, layout, { displayModeBar: false });
+    const layout = { autosize: true, margin: { t: 20, b: 20, l: 20, r: 20 } };
+    Plotly.newPlot(chartEl, data, layout, { displayModeBar: false, responsive: true });
   }
 
-  function aggregateByAssetType(items) {
+  function aggregateByVirtualEnvelop(items) {
     const map = {};
     items.forEach((it) => {
-      const key = it.assetType || 'ToBeDefined';
+      const key = it.virtual_envelop || 'ToBeDefined';
       map[key] = (map[key] || 0) + (Number(it.currentValue) || 0);
     });
-    return Object.keys(map).map((k) => ({ assetType: k, value: map[k] }));
-  }
-
-  function aggregateByAssetClass(items) {
-    const map = {};
-    items.forEach((it) => {
-      const key = it.assetClass || 'ToBeDefined';
-      map[key] = (map[key] || 0) + (Number(it.currentValue) || 0);
-    });
-    return Object.keys(map).map((k) => ({ assetClass: k, value: map[k] }));
-  }
-
-  function drawPie(agg) {
-    if (!agg || agg.length === 0) {
-      chartEl.innerHTML = '<div>Aucune donnée sélectionnée</div>';
-      return;
-    }
-    const labels = agg.map((a) => a.assetClass || a.assetType || 'ToBeDefined');
-    const values = agg.map((a) => a.value);
-    const custom = values.map((v) => formatCurrency(v));
-    const data = [
-      {
-        labels,
-        values,
-        type: 'pie',
-        textinfo: 'label+percent',
-        hovertemplate: '%{label}: %{customdata} (%{percent:.2%})<extra></extra>',
-        customdata: custom,
-      },
-    ];
-    const layout = { height: 420, margin: { t: 20, b: 20, l: 20, r: 20 } };
-    Plotly.newPlot(chartEl, data, layout, { displayModeBar: false });
+    return Object.keys(map).map((k) => ({ virtual_envelop: k, value: map[k] }));
   }
 
   function drawTreemap(items) {
@@ -273,25 +244,70 @@
       chartEl.innerHTML = '<div>Aucune donnée sélectionnée</div>';
       return;
     }
-    // aggregate by assetClass
-    const map = {};
+    // Build full hierarchy: Total -> virtual_envelop -> assetClass -> assetVehicle
+    const ids = [];
+    const labels = [];
+    const parents = [];
+    const values = [];
+
+    const virtualMap = new Map();
+    const classMap = new Map();
+    const vehicleMap = new Map();
+
     items.forEach((it) => {
+      const virtualEnvelop = it.virtual_envelop || 'ToBeDefined';
       const cls = it.assetClass || 'ToBeDefined';
-      map[cls] = (map[cls] || 0) + (Number(it.currentValue) || 0);
+      const vehicle = it.assetVehicle || 'ToBeDefined';
+      const v = Number(it.currentValue) || 0;
+
+      const virtualId = `virtual::${virtualEnvelop}`;
+      const classId = `class::${virtualEnvelop}::${cls}`;
+      const vehicleId = `vehicle::${virtualEnvelop}::${cls}::${vehicle}`;
+
+      virtualMap.set(virtualId, (virtualMap.get(virtualId) || 0) + v);
+      classMap.set(classId, (classMap.get(classId) || 0) + v);
+      vehicleMap.set(vehicleId, (vehicleMap.get(vehicleId) || 0) + v);
     });
-    const labels = Object.keys(map);
-    const values = labels.map((k) => map[k]);
-    // Treemap expects a parent for each label; use the 'Total' root label
-    const parents = labels.map(() => 'Total');
-    const total = values.reduce((s, v) => s + v, 0);
-    labels.unshift('Total');
-    values.unshift(total);
-    parents.unshift('');
+
+    const total = Array.from(virtualMap.values()).reduce((s, v) => s + v, 0);
+    ids.push('Total');
+    labels.push('Total');
+    parents.push('');
+    values.push(total);
+
+    // virtual_envelop nodes
+    for (const [virtualId, v] of virtualMap) {
+      ids.push(virtualId);
+      labels.push(virtualId.replace(/^virtual::/, ''));
+      parents.push('Total');
+      values.push(v);
+    }
+
+    // class nodes
+    for (const [classId, v] of classMap) {
+      const parts = classId.split('::');
+      const virtualId = `virtual::${parts[1]}`;
+      ids.push(classId);
+      labels.push(parts.slice(2).join('::'));
+      parents.push(virtualId);
+      values.push(v);
+    }
+
+    // vehicle nodes
+    for (const [vehicleId, v] of vehicleMap) {
+      const parts = vehicleId.split('::');
+      const classId = `class::${parts[1]}::${parts[2]}`;
+      ids.push(vehicleId);
+      labels.push(parts.slice(3).join('::'));
+      parents.push(classId);
+      values.push(v);
+    }
 
     const text = values.map((v) => formatCurrency(v));
     const data = [
       {
         type: 'treemap',
+        ids,
         labels,
         parents,
         values,
@@ -301,8 +317,8 @@
         textinfo: 'label+text+percent entry',
       },
     ];
-    const layout = { height: 420, margin: { t: 20, b: 20, l: 20, r: 20 } };
-    Plotly.newPlot(chartEl, data, layout, { displayModeBar: false });
+    const layout = { autosize: true, margin: { t: 20, b: 20, l: 20, r: 20 } };
+    Plotly.newPlot(chartEl, data, layout, { displayModeBar: false, responsive: true });
   }
 
   function escapeHtml(s) {
@@ -353,25 +369,16 @@
       const mode = modeEl ? modeEl.value : 'sunburst';
       if (mode === 'treemap') {
         drawTreemap(items);
-      } else if (mode === 'pie') {
-        const agg = aggregateByAssetClass(items);
-        drawPie(agg);
       } else {
         drawSunburst(items);
       }
     } catch (e) {
       console.error('Erreur dessin', e);
-      // fallback: aggregate by assetClass and draw pie
+      // fallback: draw sunburst
       try {
-        const agg = aggregateByAssetClass(items);
-        if (agg && agg.length > 0) {
-          drawPie(agg);
-        } else {
-          chartEl.innerHTML =
-            '<div>Aucune donnée pour dessiner le graphique.</div>';
-        }
+        drawSunburst(items);
       } catch (e2) {
-        console.error('Fallback pie failed', e2);
+        console.error('Fallback sunburst failed', e2);
         chartEl.innerHTML =
           '<div>Erreur lors du rendu du graphique (voir console).</div>';
       }
@@ -395,3 +402,4 @@
   // initial load
   loadAssets();
 })();
+

@@ -39,15 +39,14 @@
     </style>
   </head>
   <body>
-    <h2>Visualiser répartition par `assetType`</h2>
+    <h2>Visualiser répartition</h2>
     <div class="controls">
       <button id="select-all" class="btn">Tout sélectionner</button>
       <button id="clear-all" class="btn">Tout désélectionner</button>
       <label for="vis-mode">Mode:</label>
       <select id="vis-mode" style="margin-right:8px">
-        <option value="sunburst">Hierarchie (Sunburst)</option>
-        <option value="pie">Camembert (assetClass)</option>
-        <option value="treemap" selected>Treemap (assetClass)</option>
+        <option value="sunburst" selected>Hierarchie (Sunburst)</option>
+        <option value="treemap">Treemap (hiérarchie complète)</option>
       </select>
       <button id="visualize" class="btn">Visualiser</button>
       <button id="toggle-assets" class="btn">Masquer sélection</button>

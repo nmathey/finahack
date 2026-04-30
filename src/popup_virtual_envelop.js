@@ -41,6 +41,23 @@ document.addEventListener('DOMContentLoaded', () => {
     return Array.from(s);
   }
 
+  function getDefaultVirtualEnvelop(assetClass, assetType) {
+    const cls = String(assetClass || '').trim().toLowerCase();
+    const type = String(assetType || '').trim().toLowerCase();
+    if (cls === 'actions' || cls === 'obligations') return 'Bourse';
+    if (cls === 'cash') return 'Cash';
+    if (cls === 'fonds_euro' || cls === 'fonds euros') return 'Fonds euros';
+    if (cls === 'immobilier') return 'Immobilier';
+    if ((cls === 'exotique' && type === 'participation non côtées') || cls === 'matières premières') return 'Investissement alternatif';
+    if (type === 'crypto') return 'Crypto';
+    return '';
+  }
+
+  function isStandardVirtualEnvelop(value) {
+    const normalized = String(value || '').trim();
+    return ['Bourse', 'Cash', 'Fonds euros', 'Immobilier', 'Investissement alternatif', 'Crypto'].includes(normalized);
+  }
+
   function getAssetVehicleOptions(assetType, assetClass) {
     // Defaults per spec. Some depend on assetClass as well.
     switch (assetType) {
@@ -103,6 +120,8 @@ document.addEventListener('DOMContentLoaded', () => {
             sel.addEventListener('change', (e) => {
               const i = Number(e.target.dataset.idx);
               const v = e.target.value;
+              const currentVirtual = items[i].virtual_envelop || '';
+              const shouldUpdateVirtual = !currentVirtual || isStandardVirtualEnvelop(currentVirtual);
               items[i].assetClass = v;
               // update corresponding assetType select in the same row
               const row = tbody.querySelectorAll('tr')[i];
@@ -119,7 +138,15 @@ document.addEventListener('DOMContentLoaded', () => {
                   }
                   assetTypeSel.value = items[i].assetType || '';
                   // trigger change so that vehicle select updates accordingly
-                  try { assetTypeSel.dispatchEvent(new Event('change')); } catch (e) { /* ignore */ }
+                  try { assetTypeSel.dispatchEvent(new Event('change')); } catch (err) { /* ignore */ }
+                }
+              }
+              if (shouldUpdateVirtual) {
+                const newVirtual = getDefaultVirtualEnvelop(items[i].assetClass, items[i].assetType);
+                if (newVirtual) {
+                  items[i].virtual_envelop = newVirtual;
+                  const rowInput = row?.querySelector('input[data-field="virtual_envelop"]');
+                  if (rowInput) rowInput.value = newVirtual;
                 }
               }
             });
@@ -137,6 +164,8 @@ document.addEventListener('DOMContentLoaded', () => {
             sel.addEventListener('change', (e) => {
               const i = Number(e.target.dataset.idx);
               const v = e.target.value;
+              const currentVirtual = items[i].virtual_envelop || '';
+              const shouldUpdateVirtual = !currentVirtual || isStandardVirtualEnvelop(currentVirtual);
               items[i].assetType = v;
               // update vehicle select for this row
               const row = tbody.querySelectorAll('tr')[i];
@@ -150,6 +179,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     items[i].assetVehicle = optsV[0] || '';
                   }
                   vehicleSel.value = items[i].assetVehicle || '';
+                }
+                if (shouldUpdateVirtual) {
+                  const newVirtual = getDefaultVirtualEnvelop(items[i].assetClass, items[i].assetType);
+                  if (newVirtual) {
+                    items[i].virtual_envelop = newVirtual;
+                    const rowInput = row.querySelector('input[data-field="virtual_envelop"]');
+                    if (rowInput) rowInput.value = newVirtual;
+                  }
                 }
               }
             });
@@ -203,12 +240,17 @@ document.addEventListener('DOMContentLoaded', () => {
       items = Array.isArray(res.flattened_holdings_cache)
         ? res.flattened_holdings_cache
         : [];
-      // Migration: ensure `virtual_envelop` defaults to accountName when missing
+      // Migration: ensure `virtual_envelop` defaults to rule-based names when missing or legacy placeholder
       let changed = false;
       items = items.map((it) => {
         const copy = { ...it };
-        if (!copy.virtual_envelop || copy.virtual_envelop === 'ToBeDefined') {
-          copy.virtual_envelop = copy.accountName || '';
+        const defaultVirtual = getDefaultVirtualEnvelop(copy.assetClass, copy.assetType);
+        if (!copy.virtual_envelop || copy.virtual_envelop === 'ToBeDefined' || copy.virtual_envelop === copy.accountName) {
+          if (defaultVirtual) {
+            copy.virtual_envelop = defaultVirtual;
+          } else {
+            copy.virtual_envelop = copy.accountName || '';
+          }
           changed = changed || copy.virtual_envelop !== it.virtual_envelop;
         }
         return copy;
@@ -255,6 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const exportBtn = document.getElementById('export-csv-btn');
   const addRuleBtn = document.getElementById('add-rule-btn');
   const applyRulesBtn = document.getElementById('apply-rules-btn');
+  const applyDefaultsBtn = document.getElementById('apply-defaults-btn');
   const rulesContainer = document.getElementById('rules-container');
   function escapeCsv(value) {
     if (value === null || value === undefined) return '';
@@ -414,6 +457,31 @@ document.addEventListener('DOMContentLoaded', () => {
     saveRules(rules, () => {
       applyRules(rules);
     });
+  });
+
+  applyDefaultsBtn.addEventListener('click', () => {
+    const changedIdxs = new Set();
+    let changed = false;
+    items = items.map((it, idx) => {
+      const copy = { ...it };
+      const defaultVirtual = getDefaultVirtualEnvelop(copy.assetClass, copy.assetType);
+      if (defaultVirtual && copy.virtual_envelop !== defaultVirtual) {
+        copy.virtual_envelop = defaultVirtual;
+        changed = true;
+        changedIdxs.add(idx);
+      }
+      return copy;
+    });
+    if (changed) {
+      chrome.storage.local.set({ flattened_holdings_cache: items }, () => {
+        render(items, changedIdxs);
+        status.textContent = 'Enveloppes par défaut appliquées';
+        setTimeout(()=>status.textContent='',2000);
+      });
+    } else {
+      status.textContent = 'Aucune modification';
+      setTimeout(()=>status.textContent='',2000);
+    }
   });
 
   function testRuleOnValue(val, rule) {
