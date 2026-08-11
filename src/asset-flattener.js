@@ -27,6 +27,7 @@ function flattenAssets(apiResponse) {
     else if (holding.manual_type === 'real_estate')
       envelopeType = 'direct_real_estate';
     else if (holding.manual_type === 'scpi') envelopeType = 'scpi';
+    else if (holding.manual_type === 'commodities') envelopeType = 'commodities';
     else if (!holding.bank_account_type) envelopeType = 'crypto_wallet';
 
     const baseInfo = {
@@ -168,7 +169,24 @@ function flattenAssets(apiResponse) {
       });
     }
 
-    // --- 8. Startups ---
+    // --- 8. Métaux précieux ---
+    if (holding.precious_metals) {
+      holding.precious_metals.forEach((pm) => {
+        const preciousMetal = pm.precious_metal || pm.valuable || {};
+        pushAsset(
+          pm.id,
+          preciousMetal.name || pm.name || 'Métal précieux',
+          'Matières premières',
+          'Physique',
+          'Physique',
+          pm.display_current_value,
+          pm.quantity,
+          pm.display_unrealized_pnl
+        );
+      });
+    }
+
+    // --- 9. Startups ---
     if (holding.startups) {
       holding.startups.forEach((s) => {
         pushAsset(

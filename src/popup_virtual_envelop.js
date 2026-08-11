@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'Fonds euros': ['Fonds Euro'],
     'Immobilier': ['Physique', 'Papier'],
     'Exotique': ['Crypto', 'Participation non côtées'],
-    'Matières premières': ['Papier'],
+    'Matières premières': ['Physique', 'Papier'],
     'Autre': ['Autre']
   };
 
