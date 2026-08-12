@@ -13,13 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
     'Fonds euros': ['Fonds Euro'],
     'Immobilier': ['Physique', 'Papier'],
     'Exotique': ['Crypto', 'Participation non côtées'],
-    'Matières premières': ['Papier'],
+    'Matières premières': ['Physique', 'Papier'],
     'Autre': ['Autre']
   };
 
   function getAssetTypeOptions(assetClass) {
-    if (!assetClass) return ['Autre'];
-    return ASSET_TYPE_MAP[assetClass] || ['Autre'];
+    if (!assetClass) return [];
+    return ASSET_TYPE_MAP[assetClass] || [];
   }
 
   function getAllAssetTypeValues() {
@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getAssetVehicleOptions(assetType, assetClass) {
     // Defaults per spec. Some depend on assetClass as well.
+    if (!assetType) return [];
     switch (assetType) {
       case 'Participations côtées':
         return ['Titre', 'Token crypto', 'ETF', 'Fonds'];
@@ -83,8 +84,34 @@ document.addEventListener('DOMContentLoaded', () => {
       case 'Participation non côtées':
         return ['Fonds', 'Token crypto', 'Titre'];
       default:
-        return ['Autre'];
+        return [];
     }
+  }
+
+  function buildSelectWithPlaceholder(options, selectedValue, placeholderLabel) {
+    const sel = document.createElement('select');
+    const normSelected = String(selectedValue ?? '').trim();
+    const cleanOptions = (options || []).filter((opt) => opt !== undefined && opt !== null && String(opt).trim() !== '');
+
+    const blankOption = document.createElement('option');
+    blankOption.value = '';
+    blankOption.textContent = placeholderLabel;
+    if (!normSelected) blankOption.selected = true;
+    sel.appendChild(blankOption);
+
+    cleanOptions.forEach((opt) => {
+      const o = document.createElement('option');
+      o.value = opt;
+      o.textContent = opt;
+      if (normSelected === opt) o.selected = true;
+      sel.appendChild(o);
+    });
+
+    if (normSelected && !cleanOptions.includes(normSelected)) {
+      sel.value = '';
+    }
+
+    return sel;
   }
 
   function render(itemsToRender, changedIndices) {
@@ -106,23 +133,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (editableFields.has(col)) {
           // assetClass: select controlling assetType options
           if (col === 'assetClass') {
-            const sel = document.createElement('select');
+            const sel = buildSelectWithPlaceholder(Object.keys(ASSET_TYPE_MAP), value || '', '— Classe —');
             sel.dataset.idx = idx;
             sel.dataset.field = 'assetClass';
-            const classes = Object.keys(ASSET_TYPE_MAP);
-            classes.forEach((c) => {
-              const o = document.createElement('option');
-              o.value = c;
-              o.textContent = c;
-              if ((value || '') === c) o.selected = true;
-              sel.appendChild(o);
-            });
             sel.addEventListener('change', (e) => {
               const i = Number(e.target.dataset.idx);
               const v = e.target.value;
               const currentVirtual = items[i].virtual_envelop || '';
               const shouldUpdateVirtual = !currentVirtual || isStandardVirtualEnvelop(currentVirtual);
               items[i].assetClass = v;
+              if (!v) {
+                items[i].assetType = '';
+                items[i].assetVehicle = '';
+              }
               // update corresponding assetType select in the same row
               const row = tbody.querySelectorAll('tr')[i];
               if (row) {
@@ -130,15 +153,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 const opts = getAssetTypeOptions(v);
                 if (assetTypeSel) {
                   assetTypeSel.innerHTML = '';
-                  opts.forEach((opt) => {
-                    const o = document.createElement('option'); o.value = opt; o.textContent = opt; assetTypeSel.appendChild(o);
+                  const typeOptions = buildSelectWithPlaceholder(opts, items[i].assetType || '', '— Type —');
+                  assetTypeSel.replaceWith(typeOptions);
+                  typeOptions.dataset.idx = i;
+                  typeOptions.dataset.field = 'assetType';
+                  typeOptions.addEventListener('change', (event) => {
+                    const rowIndex = Number(event.target.dataset.idx);
+                    const nextType = event.target.value;
+                    const currentRowVirtual = items[rowIndex].virtual_envelop || '';
+                    const shouldRefreshVirtual = !currentRowVirtual || isStandardVirtualEnvelop(currentRowVirtual);
+                    items[rowIndex].assetType = nextType;
+                    const rowNode = tbody.querySelectorAll('tr')[rowIndex];
+                    if (rowNode) {
+                      const vehicleSel = rowNode.querySelector('select[data-field="assetVehicle"]');
+                      const optsV = getAssetVehicleOptions(nextType, items[rowIndex].assetClass);
+                      if (vehicleSel) {
+                        vehicleSel.innerHTML = '';
+                        const vehicleOptions = buildSelectWithPlaceholder(optsV, items[rowIndex].assetVehicle || '', '— Véhicule —');
+                        vehicleSel.replaceWith(vehicleOptions);
+                        vehicleOptions.dataset.idx = rowIndex;
+                        vehicleOptions.dataset.field = 'assetVehicle';
+                        vehicleOptions.addEventListener('change', (vehicleEvent) => {
+                          items[Number(vehicleEvent.target.dataset.idx)].assetVehicle = vehicleEvent.target.value;
+                        });
+                        if (nextType && optsV.includes(items[rowIndex].assetVehicle)) {
+                          items[rowIndex].assetVehicle = items[rowIndex].assetVehicle;
+                        } else {
+                          items[rowIndex].assetVehicle = '';
+                        }
+                      }
+                      if (shouldRefreshVirtual) {
+                        const newVirtual = getDefaultVirtualEnvelop(items[rowIndex].assetClass, items[rowIndex].assetType);
+                        if (newVirtual) {
+                          items[rowIndex].virtual_envelop = newVirtual;
+                          const rowInput = rowNode.querySelector('input[data-field="virtual_envelop"]');
+                          if (rowInput) rowInput.value = newVirtual;
+                        }
+                      }
+                    }
                   });
-                  if (!opts.includes(items[i].assetType)) {
-                    items[i].assetType = opts[0] || '';
-                  }
-                  assetTypeSel.value = items[i].assetType || '';
-                  // trigger change so that vehicle select updates accordingly
-                  try { assetTypeSel.dispatchEvent(new Event('change')); } catch (err) { /* ignore */ }
+                  const currentAssetType = opts.includes(items[i].assetType) ? items[i].assetType : '';
+                  items[i].assetType = currentAssetType;
+                  typeOptions.value = currentAssetType || '';
+                  try { typeOptions.dispatchEvent(new Event('change')); } catch (err) { /* ignore */ }
                 }
               }
               if (shouldUpdateVirtual) {
@@ -154,19 +211,18 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           // assetType: select whose options depend on assetClass
           else if (col === 'assetType') {
-            const sel = document.createElement('select');
+            const sel = buildSelectWithPlaceholder(getAssetTypeOptions(it.assetClass || ''), value || '', '— Type —');
             sel.dataset.idx = idx;
             sel.dataset.field = 'assetType';
-            const opts = getAssetTypeOptions(it.assetClass || '');
-            opts.forEach((opt) => {
-              const o = document.createElement('option'); o.value = opt; o.textContent = opt; if ((value || '') === opt) o.selected = true; sel.appendChild(o);
-            });
             sel.addEventListener('change', (e) => {
               const i = Number(e.target.dataset.idx);
               const v = e.target.value;
               const currentVirtual = items[i].virtual_envelop || '';
               const shouldUpdateVirtual = !currentVirtual || isStandardVirtualEnvelop(currentVirtual);
               items[i].assetType = v;
+              if (!v) {
+                items[i].assetVehicle = '';
+              }
               // update vehicle select for this row
               const row = tbody.querySelectorAll('tr')[i];
               if (row) {
@@ -174,11 +230,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const optsV = getAssetVehicleOptions(v, items[i].assetClass);
                 if (vehicleSel) {
                   vehicleSel.innerHTML = '';
-                  optsV.forEach((opt) => { const o = document.createElement('option'); o.value = opt; o.textContent = opt; vehicleSel.appendChild(o); });
-                  if (!optsV.includes(items[i].assetVehicle)) {
-                    items[i].assetVehicle = optsV[0] || '';
-                  }
-                  vehicleSel.value = items[i].assetVehicle || '';
+                  const vehicleOptions = buildSelectWithPlaceholder(optsV, items[i].assetVehicle || '', '— Véhicule —');
+                  vehicleSel.replaceWith(vehicleOptions);
+                  vehicleOptions.dataset.idx = i;
+                  vehicleOptions.dataset.field = 'assetVehicle';
+                  vehicleOptions.addEventListener('change', (vehicleEvent) => {
+                    items[Number(vehicleEvent.target.dataset.idx)].assetVehicle = vehicleEvent.target.value;
+                  });
+                  const validVehicle = optsV.includes(items[i].assetVehicle) ? items[i].assetVehicle : '';
+                  items[i].assetVehicle = validVehicle;
+                  vehicleOptions.value = validVehicle || '';
                 }
                 if (shouldUpdateVirtual) {
                   const newVirtual = getDefaultVirtualEnvelop(items[i].assetClass, items[i].assetType);
@@ -194,11 +255,9 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           // assetVehicle: dependent select based on assetType (and assetClass when needed)
           else {
-            const selV = document.createElement('select');
+            const selV = buildSelectWithPlaceholder(getAssetVehicleOptions(it.assetType || '', it.assetClass || ''), value || '', '— Véhicule —');
             selV.dataset.idx = idx;
             selV.dataset.field = 'assetVehicle';
-            const optsV = getAssetVehicleOptions(it.assetType || '', it.assetClass || '');
-            optsV.forEach((opt) => { const o = document.createElement('option'); o.value = opt; o.textContent = opt; if ((value || '') === opt) o.selected = true; selV.appendChild(o); });
             selV.addEventListener('change', (e) => {
               items[e.target.dataset.idx].assetVehicle = e.target.value;
             });
@@ -515,16 +574,25 @@ document.addEventListener('DOMContentLoaded', () => {
           const tv = r.targetValue || r.target || '';
           if (tf === 'assetClass') {
             if (copy.assetClass !== tv) { copy.assetClass = tv; rowChanged = true; changed = true; }
-            // when assetClass set, ensure assetType and vehicle valid
+            // when assetClass set, ensure assetType and vehicle remain valid or are intentionally left blank
             const optsA = getAssetTypeOptions(copy.assetClass);
-            if (!optsA.includes(copy.assetType)) { copy.assetType = optsA[0] || ''; rowChanged = true; changed = true; }
+            if (copy.assetClass && copy.assetType && !optsA.includes(copy.assetType)) {
+              copy.assetType = '';
+              rowChanged = true; changed = true;
+            }
             const optsV1 = getAssetVehicleOptions(copy.assetType || '', copy.assetClass || '');
-            if (!optsV1.includes(copy.assetVehicle)) { copy.assetVehicle = optsV1[0] || ''; rowChanged = true; changed = true; }
+            if (copy.assetType && copy.assetVehicle && !optsV1.includes(copy.assetVehicle)) {
+              copy.assetVehicle = '';
+              rowChanged = true; changed = true;
+            }
           } else if (tf === 'assetType') {
             if (copy.assetType !== tv) { copy.assetType = tv; rowChanged = true; changed = true; }
-            // when assetType set, ensure vehicle valid
+            // when assetType set, ensure vehicle remains valid or is intentionally left blank
             const optsV2 = getAssetVehicleOptions(copy.assetType || '', copy.assetClass || '');
-            if (!optsV2.includes(copy.assetVehicle)) { copy.assetVehicle = optsV2[0] || ''; rowChanged = true; changed = true; }
+            if (copy.assetType && copy.assetVehicle && !optsV2.includes(copy.assetVehicle)) {
+              copy.assetVehicle = '';
+              rowChanged = true; changed = true;
+            }
           } else if (tf === 'assetVehicle') {
             if (copy.assetVehicle !== tv) { copy.assetVehicle = tv; rowChanged = true; changed = true; }
           }
