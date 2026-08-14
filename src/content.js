@@ -10,6 +10,16 @@ const injectScript = (file, node) => {
   target.appendChild(script);
 };
 
+// keys used by the treemap injection feature
+const INJECT_KEY = 'inject_treemap_into_synthese';
+const FLATTENED_KEY = 'flattened_holdings_cache';
+const TREEMAP_CONTAINER_ID = 'finaHack-treemap-container';
+
+// debounce / throttling helpers to avoid excessive work on SPA mutations
+let _lastCheckAt = 0;
+let _checkScheduled = false;
+const CHECK_DEBOUNCE_MS = 800;
+
 const handleWindowMessages = (event) => {
   if (event.source !== window || event.data.type !== 'FROM_PAGE') return;
 
@@ -83,7 +93,151 @@ const setupEventListeners = () => {
 
 const initializeExtension = () => {
   injectScript('src/injected.js', 'body');
+  // watch for Synthèse view and inject treemap when enabled
+  watchAndInjectTreemap();
   setupEventListeners();
 };
 
 initializeExtension();
+
+// --- Treemap injection logic ---
+
+function isSyntheseView() {
+  try {
+    const path = window.location.pathname || '';
+    if (path.toLowerCase().includes('synthese') || path.toLowerCase().includes('portfolio')) return true;
+    const h1 = document.querySelector('h1');
+    if (h1 && /synth[eè]se/i.test(h1.textContent)) return true;
+    // fallback: look for menu item or tab labelled Synthèse
+    const el = Array.from(document.querySelectorAll('*')).find((n) => /synth[eè]se/i.test(n.textContent || ''));
+    return Boolean(el);
+  } catch (e) {
+    return false;
+  }
+}
+
+function injectTreemapScriptsAndSend(items) {
+  try {
+    // if the page already has the treemap container, only send updated data
+    if (document.getElementById(TREEMAP_CONTAINER_ID)) {
+      window.postMessage({ type: 'FINAHACK_TREEMAP_DATA', items }, '*');
+      return;
+    }
+
+    // inject Plotly if not already present in page
+    const hasPlotly = Boolean(window.Plotly) || document.querySelector('script[src*="plotly.min.js"]');
+    if (!hasPlotly) injectScript('lib/plotly.min.js', 'head');
+
+    // inject the renderer script once
+    if (!document.querySelector(`script[src*="page_treemap_inject.js"]`)) {
+      injectScript('src/page_treemap_inject.js', 'body');
+    }
+
+    // send data after scripts had time to load; only once
+    setTimeout(() => {
+      window.postMessage({ type: 'FINAHACK_TREEMAP_DATA', items }, '*');
+    }, 600);
+  } catch (e) {
+    console.error('injectTreemapScriptsAndSend failed', e);
+  }
+}
+
+function checkAndMaybeInject() {
+  // throttle repeated checks
+  const now = Date.now();
+  if (now - _lastCheckAt < CHECK_DEBOUNCE_MS) {
+    if (!_checkScheduled) {
+      _checkScheduled = true;
+      setTimeout(() => {
+        _checkScheduled = false;
+        checkAndMaybeInject();
+      }, CHECK_DEBOUNCE_MS);
+    }
+    return;
+  }
+  _lastCheckAt = now;
+
+  chrome.storage.local.get([INJECT_KEY], (res) => {
+    const enabled = Boolean(res && res[INJECT_KEY]);
+    showDebug(`inject enabled=${enabled}`);
+    if (!enabled) return showDebug('injection disabled by toggle');
+    if (!isSyntheseView()) return showDebug('Synthèse view not detected');
+    // get cached flattened holdings and send
+    chrome.storage.local.get([FLATTENED_KEY], (resp) => {
+      const items = (resp && resp[FLATTENED_KEY]) || [];
+      showDebug(`found items=${items ? items.length : 0}`);
+      if (items && items.length > 0) {
+        injectTreemapScriptsAndSend(items);
+        showDebug('injected treemap scripts and sent data');
+      } else {
+        showDebug('no data to render');
+      }
+    });
+  });
+}
+
+function watchAndInjectTreemap() {
+  // initial check
+  checkAndMaybeInject();
+  // observe navigation changes (SPA)
+  const mo = new MutationObserver(() => {
+    // debounce heavy checks triggered by frequent DOM mutations
+    if (!_checkScheduled) {
+      _checkScheduled = true;
+      setTimeout(() => {
+        _checkScheduled = false;
+        checkAndMaybeInject();
+      }, CHECK_DEBOUNCE_MS);
+    }
+  });
+  mo.observe(document.body, { childList: true, subtree: true });
+
+  // also listen to storage changes to remove if disabled
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes[INJECT_KEY]) {
+      const newVal = changes[INJECT_KEY].newValue;
+      if (!newVal) {
+        window.postMessage({ type: 'FINAHACK_TREEMAP_REMOVE' }, '*');
+      } else {
+        checkAndMaybeInject();
+      }
+    }
+    if (changes[FLATTENED_KEY]) {
+      // if data changed and injection enabled and on synthese, resend
+      checkAndMaybeInject();
+    }
+  });
+}
+
+function showDebug(msg) {
+  try {
+    const id = 'finaHack-debug-overlay';
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = id;
+      el.style.position = 'fixed';
+      el.style.left = '12px';
+      el.style.bottom = '12px';
+      el.style.zIndex = 2147483647;
+      el.style.background = 'rgba(0,0,0,0.75)';
+      el.style.color = '#fff';
+      el.style.padding = '8px 10px';
+      el.style.borderRadius = '8px';
+      el.style.fontSize = '12px';
+      el.style.maxWidth = '320px';
+      el.style.boxShadow = '0 6px 18px rgba(0,0,0,0.3)';
+      document.documentElement.appendChild(el);
+    }
+    el.textContent = `[FinaHack] ${msg}`;
+    // auto-hide after 6s
+    clearTimeout(el._hideTimer);
+    el._hideTimer = setTimeout(() => {
+      try {
+        el.remove();
+      } catch (e) {}
+    }, 6000);
+  } catch (e) {
+    console.log('[FinaHack debug]', msg);
+  }
+}
