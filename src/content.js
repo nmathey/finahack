@@ -13,6 +13,7 @@ const injectScript = (file, node) => {
 // keys used by the treemap injection feature
 const INJECT_KEY = 'inject_treemap_into_synthese';
 const FLATTENED_KEY = 'flattened_holdings_cache';
+const LAST_SELECTION_KEY = 'popup_myasset_last_selection';
 const TREEMAP_CONTAINER_ID = 'finaHack-treemap-container';
 
 // debounce / throttling helpers to avoid excessive work on SPA mutations
@@ -157,22 +158,29 @@ function checkAndMaybeInject() {
   }
   _lastCheckAt = now;
 
-  chrome.storage.local.get([INJECT_KEY], (res) => {
+  chrome.storage.local.get([INJECT_KEY, FLATTENED_KEY, LAST_SELECTION_KEY], (res) => {
     const enabled = Boolean(res && res[INJECT_KEY]);
     showDebug(`inject enabled=${enabled}`);
     if (!enabled) return showDebug('injection disabled by toggle');
     if (!isSyntheseView()) return showDebug('Synthèse view not detected');
-    // get cached flattened holdings and send
-    chrome.storage.local.get([FLATTENED_KEY], (resp) => {
-      const items = (resp && resp[FLATTENED_KEY]) || [];
-      showDebug(`found items=${items ? items.length : 0}`);
-      if (items && items.length > 0) {
-        injectTreemapScriptsAndSend(items);
-        showDebug('injected treemap scripts and sent data');
-      } else {
-        showDebug('no data to render');
-      }
-    });
+
+    const items = Array.isArray(res && res[FLATTENED_KEY]) ? res[FLATTENED_KEY] : [];
+    const selectedIds = Array.isArray(res && res[LAST_SELECTION_KEY])
+      ? res[LAST_SELECTION_KEY].map((id) => String(id).trim()).filter(Boolean)
+      : [];
+
+    const filteredItems = selectedIds.length > 0
+      ? items.filter((it) => selectedIds.includes(String(it?.assetId || '').trim()))
+      : items;
+
+    showDebug(`found items=${items.length} filtered=${filteredItems.length} selected=${selectedIds.length}`);
+    if (filteredItems && filteredItems.length > 0) {
+      injectTreemapScriptsAndSend(filteredItems);
+      showDebug('injected treemap scripts and sent data');
+    } else {
+      injectTreemapScriptsAndSend([]);
+      showDebug('no data to render after selection filter');
+    }
   });
 }
 
@@ -202,8 +210,8 @@ function watchAndInjectTreemap() {
         checkAndMaybeInject();
       }
     }
-    if (changes[FLATTENED_KEY]) {
-      // if data changed and injection enabled and on synthese, resend
+    if (changes[FLATTENED_KEY] || changes[LAST_SELECTION_KEY]) {
+      // if the cached data or popup selection changed and injection is enabled, resend
       checkAndMaybeInject();
     }
   });
