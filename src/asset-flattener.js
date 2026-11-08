@@ -13,6 +13,10 @@ function flattenAssets(apiResponse) {
     // --- 1. Contexte du Holding (Enveloppe) ---
     let envelopeType = 'unknown';
     const typeSlug = holding.bank_account_type?.slug || '';
+    const holdingsAccountSubtype =
+      holding.holdings_account_type?.account_subtype || '';
+    const holdingsAccountType =
+      holding.holdings_account_type?.account_type || '';
 
     if (typeSlug.includes('lifeinsurance')) envelopeType = 'av';
     else if (typeSlug.includes('pea')) envelopeType = 'pea';
@@ -28,6 +32,11 @@ function flattenAssets(apiResponse) {
       envelopeType = 'direct_real_estate';
     else if (holding.manual_type === 'scpi') envelopeType = 'scpi';
     else if (holding.manual_type === 'commodities') envelopeType = 'commodities';
+    else if (
+      holdingsAccountSubtype === 'generic_asset' ||
+      holdingsAccountType === 'other'
+    )
+      envelopeType = 'other';
     else if (!holding.bank_account_type) envelopeType = 'crypto_wallet';
 
     const baseInfo = {
@@ -198,6 +207,149 @@ function flattenAssets(apiResponse) {
           s.display_current_value,
           s.shares,
           s.display_unrealized_pnl
+        );
+      });
+    }
+
+    // --- 10. Actifs génériques (montres, vins, objets de collection, etc.) ---
+    if (holding.generic_assets) {
+      holding.generic_assets.forEach((ga) => {
+        const category = String(ga.category || ga.asset_type || '').toLowerCase();
+        const quantity = ga.quantity ?? ga.shares ?? 1;
+        const currentPriceRaw =
+          ga.display_current_price?.value ??
+          ga.display_current_price?.amount ??
+          ga.display_current_price ??
+          ga.current_price?.amount ??
+          ga.current_price?.value ??
+          ga.current_price ??
+          0;
+        const currentPrice =
+          typeof currentPriceRaw === 'object'
+            ? currentPriceRaw.amount ?? currentPriceRaw.value ?? 0
+            : currentPriceRaw;
+        const currentValueRaw =
+          ga.display_current_value?.amount ??
+          ga.display_current_value?.value ??
+          ga.display_current_value ??
+          ga.current_value ??
+          ga.value ??
+          ga.estimated_value ??
+          (quantity && currentPrice ? quantity * currentPrice : null);
+        const currentValue =
+          typeof currentValueRaw === 'object'
+            ? currentValueRaw.amount ?? currentValueRaw.value ?? null
+            : currentValueRaw;
+        const name =
+          ga.name ||
+          ga.label ||
+          ga.asset?.name ||
+          ga.category ||
+          'Actif exotique';
+
+        let assetClass = 'Autres';
+        let assetType = 'Autre';
+        let assetVehicle = 'Autre';
+
+        if (
+          category.includes('watch') ||
+          category.includes('montre')
+        ) {
+          assetType = 'Montre';
+          assetVehicle = 'Physique';
+        } else if (
+          category.includes('wine') ||
+          category.includes('vin')
+        ) {
+          assetType = 'Vin';
+          assetVehicle = 'Physique';
+        } else if (
+          category.includes('jewel') ||
+          category.includes('bijou')
+        ) {
+          assetType = 'Bijoux';
+          assetVehicle = 'Physique';
+        } else if (
+          category.includes('pokemon') ||
+          category.includes('carte')
+        ) {
+          assetType = 'Cartes Pokémon';
+          assetVehicle = 'Physique';
+        } else if (
+          category.includes('sneaker') ||
+          category.includes('shoe')
+        ) {
+          assetType = 'Sneakers';
+          assetVehicle = 'Physique';
+        } else if (
+          category.includes('car') ||
+          category.includes('voiture')
+        ) {
+          assetType = 'Voiture';
+          assetVehicle = 'Physique';
+        } else if (
+          category.includes('artwork') ||
+          category.includes('œuvre') ||
+          category.includes('oeuvre')
+        ) {
+          assetType = 'Œuvres d’art';
+          assetVehicle = 'Physique';
+        } else if (
+          category.includes('gem') ||
+          category.includes('stone') ||
+          category.includes('pierres')
+        ) {
+          assetType = 'Pierres précieuses';
+          assetVehicle = 'Physique';
+        } else if (
+          category.includes('crowdfunding') ||
+          category.includes('real estate') ||
+          category.includes('immobilier')
+        ) {
+          assetType = 'Crowdfunding immobilier';
+          assetVehicle = 'Papier';
+        } else if (
+          category.includes('private debt') ||
+          category.includes('private_debt') ||
+          category.includes('dette privée')
+        ) {
+          assetType = 'Dette privée';
+          assetVehicle = 'Papier';
+        } else if (category.includes('private equity') || category.includes('private_equity')) {
+          assetType = 'Private equity';
+          assetVehicle = 'Papier';
+        } else if (category.includes('hedge fund') || category.includes('hedge_fund')) {
+          assetType = 'Hedge fund';
+          assetVehicle = 'Papier';
+        } else if (category.includes('forest') || category.includes('groupement')) {
+          assetType = 'Groupement forestier d’investissement';
+          assetVehicle = 'Papier';
+        } else if (category.includes('fcpi')) {
+          assetType = 'FCPI';
+          assetVehicle = 'Papier';
+        } else if (category.includes('g3f')) {
+          assetType = 'G3F';
+          assetVehicle = 'Papier';
+        } else if (category.includes('peer') || category.includes('prêt') || category.includes('pret')) {
+          assetType = 'Prêts entre particuliers';
+          assetVehicle = 'Papier';
+        } else if (category.includes('terrain')) {
+          assetType = 'Terrain';
+          assetVehicle = 'Physique';
+        }
+
+        pushAsset(
+          ga.id,
+          name,
+          assetClass,
+          assetType,
+          assetVehicle,
+          currentValue,
+          quantity,
+          ga.display_unrealized_pnl ??
+            ga.unrealized_pnl ??
+            ga.pnl ??
+            0
         );
       });
     }
