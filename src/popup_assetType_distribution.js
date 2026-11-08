@@ -1,5 +1,6 @@
  (function () {
   const STORAGE_KEY = 'flattened_holdings_cache';
+  const INJECT_TREEMAP_KEY = 'inject_treemap_into_synthese';
   const tbody = document.querySelector('#assets-table tbody');
   const info = document.getElementById('info');
   const chartEl = document.getElementById('chart');
@@ -333,6 +334,18 @@
       .querySelectorAll('input[type=checkbox]')
       .forEach((cb) => (cb.checked = true));
   });
+
+  // init inject toggle state
+  const injectCheckbox = document.getElementById('enable-inject');
+  if (injectCheckbox) {
+    chrome.storage.local.get([INJECT_TREEMAP_KEY], (res) => {
+      injectCheckbox.checked = Boolean(res && res[INJECT_TREEMAP_KEY]);
+    });
+    injectCheckbox.addEventListener('change', (e) => {
+      const v = Boolean(e.currentTarget.checked);
+      chrome.storage.local.set({ [INJECT_TREEMAP_KEY]: v });
+    });
+  }
   document.getElementById('clear-all').addEventListener('click', () => {
     tbody
       .querySelectorAll('input[type=checkbox]')

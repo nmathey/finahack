@@ -14,11 +14,31 @@ document.addEventListener('DOMContentLoaded', () => {
     'Immobilier': ['Physique', 'Papier'],
     'Exotique': ['Crypto', 'Participation non côtées'],
     'Matières premières': ['Physique', 'Papier'],
-    'Autre': ['Autre']
+    'Autres': [
+      'Autre',
+      'Bijoux',
+      'Cartes Pokémon',
+      'Crowdfunding immobilier',
+      'Dette privée',
+      'FCPI',
+      'G3F',
+      'Groupement forestier d’investissement',
+      'Hedge fund',
+      'Montre',
+      'Œuvres d’art',
+      'Pierres précieuses',
+      'Prêts entre particuliers',
+      'Private equity',
+      'Sneakers',
+      'Terrain',
+      'Vin',
+      'Voiture'
+    ]
   };
 
   function getAssetTypeOptions(assetClass) {
     if (!assetClass) return [];
+    if (assetClass === 'Autre') return ASSET_TYPE_MAP['Autres'] || [];
     return ASSET_TYPE_MAP[assetClass] || [];
   }
 
@@ -48,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cls === 'cash') return 'Cash';
     if (cls === 'fonds_euro' || cls === 'fonds euros') return 'Fonds euros';
     if (cls === 'immobilier') return 'Immobilier';
+    if (cls === 'autres' || cls === 'autre') return 'Investissement alternatif';
     if ((cls === 'exotique' && type === 'participation non côtées') || cls === 'matières premières') return 'Investissement alternatif';
     if (type === 'crypto') return 'Crypto';
     return '';
@@ -61,6 +82,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function getAssetVehicleOptions(assetType, assetClass) {
     // Defaults per spec. Some depend on assetClass as well.
     if (!assetType) return [];
+    if (assetClass === 'Autres' || assetClass === 'Autre') {
+      return ['Autre', 'Physique', 'Papier'];
+    }
     switch (assetType) {
       case 'Participations côtées':
         return ['Titre', 'Token crypto', 'ETF', 'Fonds'];
@@ -79,6 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (assetClass === 'Immobilier') return ['SCPI', 'Token crypto', 'ETF', 'Fonds'];
         if (assetClass === 'Matières premières') return ['ETF', 'Token crypto', 'Fonds'];
         return ['Papier'];
+      case 'Autre':
+        return ['Autre', 'Physique'];
       case 'Crypto':
         return ['Token crypto', 'NFT crypto'];
       case 'Participation non côtées':

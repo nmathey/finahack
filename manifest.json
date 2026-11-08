@@ -34,6 +34,7 @@
       "resources": [
         "src/export-csv.js",
         "src/injected.js",
+        "src/page_treemap_inject.js",
         "lib/plotly.min.js",
         "src/popup_top_movers.html",
         "src/popup_top_movers.js",
